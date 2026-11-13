@@ -22,6 +22,11 @@ import {
    the label the BPI-R4 SFP quirk for this stick carries. */
 const MODEL = 'GPON-ONU-SFP2GFX';
 
+/* The platform: the stick is an RTL9601D. The odi-oss kernel reports the
+   board it was written for (the ODI DFP-34X-2C2, an RTL9602C) as its system
+   type, which the row keeps in its tooltip. */
+const PLATFORM = 'RTL9601D DevKit';
+
 const STATE_NAMES = { O1: 'Initial', O2: 'Standby', O3: 'Serial number', O4: 'Ranging',
   O5: 'In Service', O6: 'Intermittent', O7: 'Emergency stop' };
 
@@ -330,6 +335,7 @@ function renderDevice(host) {
   const firmware = build.image || fw.running || env['sw_version' + active] || null;
 
   SF.cells.model.textContent = MODEL;
+  SF.cells.platform.textContent = PLATFORM;
   SF.cells.fw.textContent = firmware || DASH;
   SF.cells.kernel.textContent = build.kernel ? 'Linux ' + build.kernel : slot.kernel || DASH;
   O.cells.ip.textContent = vals.LAN_IP_ADDR || DASH;
@@ -403,7 +409,7 @@ function renderDevice(host) {
     upAt = { v: st.uptime, at: st.at, clock: c.clock };
     SF.cells.host.textContent = st.hostname || DASH;
     SF.cells.arch.textContent = st.cpuModel || DASH;
-    SF.cells.platform.textContent = st.systemType || DASH;
+    SF.cells.platform.title = st.systemType ? 'Kernel system type: ' + st.systemType : '';
 
     const busy = cpuBusy(prevCpu, st.raw.cpu);
     prevCpu = st.raw.cpu;

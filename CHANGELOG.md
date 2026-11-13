@@ -107,6 +107,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   names its version.
 - The footer after a sign-in is one line: Open PON Foundation · NIJIKA Luna × ODI OSS ×
   Peter-Pon · the image version (the confd build without one, and in its tooltip).
+- Status > Device: Target Platform reads RTL9601D DevKit, what the stick is; the system type
+  the odi-oss kernel reports (the ODI DFP-34X-2C2 board, an RTL9602C) is in its tooltip.
 - Status > Device, PON box: Light in has a bar, the class B+ window in green with its outer
   16 % in yellow and red outside it, a needle at the reading and the edges marked under it.
   The photodiode and the laser are drawn as flashes, lit as each dot of light arrives and
