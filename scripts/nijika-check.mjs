@@ -163,8 +163,9 @@ const isp1 = SV.serviceMap(svcMib, { on: false });
 eq(isp1.lanes.map((l) => [l.uni, l.router, l.action, l.olt, !!l.blocked]),
   [['PPTP 0x0101', 'untagged', '+ tag', 'VLAN 1', true], ['multicast', 'as sent', 'as is', 'multicast', false]],
   'ISP1: one lane on the UNI, held by the fibre-side filter, and multicast');
-eq(isp1.lanes[0].gems.includes(1027) && isp1.lanes[0].tconts.includes(1024), true, 'ISP1: GEM port and T-CONT through the mapper');
-eq(isp1.fallbacks.includes('VEIP 0x0601: Any other VLAN is dropped.'), true, 'ISP1: the VEIP drops every VLAN');
+eq(isp1.lanes[0].gems.some((g) => g.gem === 1027 && g.alloc === 1024), true, 'ISP1: GEM port and T-CONT through the mapper');
+eq(isp1.fallbacks.includes('Any other VLAN is dropped: PPTP 0x0101, VEIP 0x0601.'), true,
+  'ISP1: the default rules, once, with the UNIs they are on');
 const man = SV.serviceMap(svcMib, { on: true, vid: 110 });
 eq(man.lanes.filter((l) => l.kind !== 'MCAST').map((l) => [l.uni, l.router, l.action, l.olt]),
   [['PPTP 0x0101', 'untagged', '+ tag', 'VLAN 110'], ['VEIP 0x0601', 'untagged', '+ tag', 'VLAN 110']],
@@ -172,8 +173,26 @@ eq(man.lanes.filter((l) => l.kind !== 'MCAST').map((l) => [l.uni, l.router, l.ac
 eq(SV.routerNeeds(man), ['untagged'], 'manual VLAN: the router sends untagged');
 const hgu47 = parseOmci(['47 MacBriPortCfgData 9', '    BridgeIdPtr              0002', '    TPType                   01',
   '    TPPointer                0102', '1 rows', ''].join('\n'));
-eq(SV.serviceMap({ 47: hgu47 }, { on: false }).lanes.map((l) => [l.uni, l.delivered]), [['PPTP 0x0102', false]],
-  'an HGU LAN port the stick does not have is not delivered');
+const hgu = SV.serviceMap({ 47: hgu47 }, { on: false });
+eq([hgu.lanes.length, hgu.fallbacks.some((f) => /^LAN port 2 of the HGU layout/.test(f))], [0, true],
+  'an HGU LAN port the stick does not have is a footnote, not a lane');
+// A line with the same VLAN on the PPTP and the VEIP bridge, the GEM port of each VLAN through its mapper port.
+const two47 = parseOmci(['47 MacBriPortCfgData 257', '    BridgeIdPtr              0101', '    TPType                   01', '    TPPointer                0101',
+  '47 MacBriPortCfgData 4354', '    BridgeIdPtr              0101', '    TPType                   03', '    TPPointer                1102',
+  '47 MacBriPortCfgData 3585', '    BridgeIdPtr              0e01', '    TPType                   0b', '    TPPointer                0a01',
+  '47 MacBriPortCfgData 57602', '    BridgeIdPtr              0e01', '    TPType                   03', '    TPPointer                e102',
+  '4 rows', ''].join('\n'));
+const two266 = parseOmci(['266 GemIwTp 263', '    GemCtpPtr                0107', '    IwOpt                    05', '    ServProPtr               1102',
+  '266 GemIwTp 264', '    GemCtpPtr                0108', '    IwOpt                    05', '    ServProPtr               e102', '2 rows', ''].join('\n'));
+const two268 = parseOmci(['268 GemPortCtp 263', '    PortID                   0107', '    TcAdapterPtr             8000',
+  '268 GemPortCtp 264', '    PortID                   0108', '    TcAdapterPtr             8001', '2 rows', ''].join('\n'));
+const two84 = parseOmci(['=================================', 'EntityID: 0x1102', 'FilterTbl[0]: PRI 0,CFI 0, VID 500', 'FwdOp:  0x10', 'NumOfEntries: 1',
+  '=================================', '=================================', 'EntityID: 0xe102', 'FilterTbl[0]: PRI 0,CFI 0, VID 500', 'FwdOp:  0x10',
+  'NumOfEntries: 1', '=================================', ''].join('\n'));
+const two = SV.serviceMap({ 47: two47, 266: two266, 268: two268, 84: two84 }, { on: false });
+eq(two.lanes.map((l) => [l.uni, l.router, l.gems.map((g) => g.gem).join(',')]),
+  [['PPTP 0x0101', 'VLAN 500', '263'], ['VEIP 0x0a01', 'VLAN 500', '264']], 'each bridge its own GEM port for VLAN 500');
+eq(two.notes.length, 1, 'a VLAN on both bridges says which one carries it up');
 
 console.log(failed ? `nijika check: ${failed} of ${n} failed` : `nijika check ok: ${n} checks`);
 process.exit(failed ? 1 : 0);

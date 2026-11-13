@@ -16,6 +16,7 @@
  *                                             interworking TP, 6 multicast)
  *   266 GEM interworking TP                   its GEM port CTP, and the
  *                                             mapper it hangs off (IwOpt 5)
+ *   281 multicast GEM interworking TP         the same, for a multicast port
  *   268 GEM port network CTP                  the GEM port id and T-CONT
  *   262 T-CONT                                the allocation id
  *   84  VLAN tagging filter data              the VIDs a bridge port admits
@@ -164,17 +165,22 @@ function ruleLane(r) {
  * The service map. `mib` holds the parsed dumps by class ('47', '84', ...);
  * `manual` the config store's manual VLAN { on, vid }. Returns
  *   bridges: [{ id, unis: [{ kind, me, port, delivered, why }], gems, filters }]
- *   lanes:   [{ bridge, uni, router, olt, action, gems, tconts, notes, delivered, source }]
- *   fallbacks: the default rules, in words; notes: about the whole map.
+ *   lanes:   [{ bridge, uni, kind, router, olt, action, vid, gems: [{ gem, alloc }], notes, blocked, source }]
+ *   fallbacks: footnotes: what is dropped, by which UNIs, and the HGU ports
+ *   the stick has not; notes: a VLAN on two bridges.
  */
 function serviceMap(mib, manual) {
   const list = (c) => ((mib[c] && mib[c].instances) || []);
   const ports = list('47').map((i) => ({
     id: idOf(i), bridge: n(attrOf(i, 'BridgeIdPtr')), tp: n(attrOf(i, 'TPType')), ptr: n(attrOf(i, 'TPPointer')),
   })).filter((p) => p.id !== null);
-  const iwtps = list('266').map((i) => ({
+  const iw = (i) => ({
     id: idOf(i), ctp: n(attrOf(i, 'GemCtpPtr')), opt: n(attrOf(i, 'IwOpt')), sp: n(attrOf(i, 'ServProPtr')),
-  }));
+  });
+  const iwtps = list('266').map(iw);
+  /* A bridge port of TPType 6 names a multicast GEM interworking TP, class
+     281, not a 266. */
+  const mciwtps = list('281').map(iw);
   const ctps = new Map(list('268').map((i) => [idOf(i), {
     /* omcid names the T-CONT pointer TcAdapterPtr (generated/omci_mib.c). */
     port: n(attrOf(i, 'PortID')), tcont: n(attrOf(i, 'TcAdapterPtr') ?? attrOf(i, 'TContPtr')),
@@ -188,15 +194,18 @@ function serviceMap(mib, manual) {
     id: idOf(i), type: n(attrDeep(i, 'AssociationType')), point: n(attrDeep(i, 'AssociatedMePoint')), rules: rulesOf(i),
   }));
 
-  /* The GEM ports behind an ANI-side bridge port, and their T-CONTs. */
+  /* The GEM ports behind a fibre-side bridge port: { gem, alloc }, alloc
+     null for a GEM port with no T-CONT, which carries downstream only
+     (broadcast, multicast). */
   const gemsOf = (p) => {
     let ws = [];
     if (p.tp === 3) ws = iwtps.filter((w) => w.opt === 5 && w.sp === p.ptr);
     else if (p.tp === 5) ws = iwtps.filter((w) => w.id === p.ptr);
+    else if (p.tp === 6) ws = mciwtps.filter((w) => w.id === p.ptr);
     return ws.map((w) => {
       const c = ctps.get(w.ctp) || {};
       return { gem: c.port ?? null, alloc: c.tcont !== undefined ? (tconts.get(c.tcont) ?? null) : null };
-    });
+    }).filter((g) => g.gem !== null);
   };
 
   const byBridge = new Map();
@@ -207,45 +216,53 @@ function serviceMap(mib, manual) {
 
   const bridges = [];
   const lanes = [];
-  const fallbacks = [];
-  const notes = [];
+  const said = new Map();      /* a footnote -> the UNIs it is about */
+  const say = (text, uni) => { if (!said.has(text)) said.set(text, new Set()); said.get(text).add(uni); };
+  const away = [];             /* UNIs of the HGU layout the stick has not */
   for (const [bid, bp] of [...byBridge.entries()].sort((a, b) => a[0] - b[0])) {
     const unis = bp.filter((p) => p.tp === 1 || p.tp === 11).map((p) => {
       const kind = p.tp === 1 ? 'PPTP' : 'VEIP';
       /* The stick has one Ethernet port, 0x0101; the Luna HGU layout adds
          0x0102..0x0104 for an OLT that expects four, with nothing behind. */
       const extra = kind === 'PPTP' && p.ptr >= 0x0102 && p.ptr <= 0x0104;
-      return { kind, me: p.ptr, port: p.id, delivered: !extra,
-        why: extra ? 'LAN port ' + (p.ptr - 0x0100) + ' of the HGU layout: the stick has one port' : null };
+      return { kind, me: p.ptr, port: p.id, delivered: !extra };
     });
-    const ani = bp.filter((p) => p.tp === 3 || p.tp === 5 || p.tp === 6);
-    const gems = ani.flatMap(gemsOf);
+    const ani = bp.filter((p) => p.tp === 3 || p.tp === 5 || p.tp === 6)
+      .map((p) => ({ ...p, gems: gemsOf(p), vids: (filters.get(p.id) || {}).vids || null }));
     const mcast = ani.some((p) => p.tp === 6);
-    const fl = bp.map((p) => ({ port: p.id, side: p.tp === 1 || p.tp === 11 ? 'uni' : 'ani', ...(filters.get(p.id) || {}) }))
-      .filter((f) => f.vids !== undefined);
-    const aniVids = [...new Set(fl.filter((f) => f.side === 'ani').flatMap((f) => f.vids))].filter((v) => v < 4095);
-    bridges.push({ id: bid, unis, gems, filters: fl, mcast });
-    if (!unis.length) continue;
+    const aniVids = [...new Set(ani.flatMap((a) => a.vids || []))].filter((v) => v < 4095);
+    /* The GEM ports a VID travels on: those of the fibre-side ports whose
+       filter admits it, every one when none names it. */
+    const gemsFor = (vid) => {
+      const by = vid === null || vid === undefined ? [] : ani.filter((a) => a.vids && a.vids.includes(vid));
+      const seen = new Set();
+      return (by.length ? by : ani).flatMap((a) => a.gems).filter((g) => !seen.has(g.gem) && seen.add(g.gem));
+    };
+    bridges.push({ id: bid, unis, gems: ani.flatMap((a) => a.gems), filters: ani.filter((a) => a.vids), mcast });
 
     for (const u of unis) {
-      const base = { bridge: bid, uni: `${u.kind} ${hex4(u.me)}`, kind: u.kind, delivered: u.delivered, why: u.why,
-        gems: gems.map((g) => g.gem).filter((g) => g !== null),
-        tconts: [...new Set(gems.map((g) => g.alloc).filter((a) => a !== null))] };
+      const uni = `${u.kind} ${hex4(u.me)}`;
+      if (!u.delivered) { away.push(u.me); continue; }
+      const base = { bridge: bid, uni, kind: u.kind, delivered: true };
       const tables = ext.filter((e) => (e.type === 2 && u.kind === 'PPTP' && e.point === u.me)
         || (e.type === 10 && u.kind === 'VEIP' && e.point === u.me)
         || (e.type === 0 && e.point === u.port));
       if (manual && manual.on) {
         lanes.push({ ...base, router: 'untagged', olt: vlan(manual.vid), action: '+ tag', source: 'manual VLAN',
-          notes: [] });
+          gems: gemsFor(manual.vid), notes: [] });
         continue;
       }
       if (tables.length) {
         for (const t of tables) {
           for (const r of t.rules) {
             const l = ruleLane(r);
-            if (l.fallback) { fallbacks.push(`${base.uni}: ${l.text}`); continue; }
-            const ln = { ...base, router: l.from, olt: l.to, action: l.action, source: `class 171 ${hex4(t.id)} rule ${r.index}`,
-              notes: [] };
+            if (l.fallback) { say(l.text, uni); continue; }
+            if (l.action === 'drop') {
+              say(`${l.from[0].toUpperCase() + l.from.slice(1)}${l.eth ? ' ' + l.eth : ''} frames are dropped.`, uni);
+              continue;
+            }
+            const ln = { ...base, router: l.from, olt: l.to, action: l.action, vid: l.vid ?? null,
+              source: `class 171 ${hex4(t.id)} rule ${r.index}`, gems: gemsFor(l.vid), notes: [] };
             if (l.eth) ln.notes.push(l.eth + ' only');
             if (l.pri !== null) ln.notes.push('priority ' + l.pri);
             /* omcid does not install a rule whose VID the fibre-side filter
@@ -254,46 +271,62 @@ function serviceMap(mib, manual) {
               ln.notes.push(`VLAN ${l.vid} is not in the OLT's VLAN filter (${aniVids.join(', ')})`);
               ln.blocked = true;
             }
-            lanes.push(ln);
+            /* The same rule twice in a table is one service. */
+            if (!lanes.some((x) => x.bridge === bid && x.uni === uni && x.router === ln.router && x.olt === ln.olt
+              && x.action === ln.action)) lanes.push(ln);
           }
         }
       } else if (aniVids.length) {
         for (const v of aniVids) {
-          lanes.push({ ...base, router: vlan(v), olt: vlan(v), action: 'as is', source: 'class 84 filter', notes: [] });
+          lanes.push({ ...base, router: vlan(v), olt: vlan(v), action: 'as is', vid: v, source: 'class 84 filter',
+            gems: gemsFor(v), notes: [] });
         }
       } else {
-        lanes.push({ ...base, router: 'any', olt: 'any', action: 'as is', source: 'no VLAN rule', notes: [] });
+        lanes.push({ ...base, router: 'any', olt: 'any', action: 'as is', vid: null, source: 'no VLAN rule',
+          gems: gemsFor(null), notes: [] });
       }
     }
     if (mcast) {
       lanes.push({ bridge: bid, uni: 'multicast', kind: 'MCAST', delivered: true, router: 'as sent', olt: 'multicast',
-        action: 'as is', gems: [], tconts: [], source: 'multicast GEM port', notes: [] });
+        action: 'as is', gems: ani.filter((a) => a.tp === 6).flatMap((a) => a.gems), source: 'multicast GEM port',
+        notes: [] });
     }
   }
-  /* The same router VLAN on two bridges: which one carries it up is the
-     Luna service order (nijika order pptp|veip|mib). */
-  const seen = new Map();
-  for (const l of lanes.filter((x) => x.delivered && x.action !== 'drop')) {
-    const k = l.router;
-    if (seen.has(k) && seen.get(k) !== l.bridge) {
-      notes.push(`${k} is on two bridges: which one carries it upstream is the service order (nijika order).`);
-    }
-    seen.set(k, l.bridge);
+
+  const footnotes = [...said.entries()].map(([text, us]) => `${text.replace(/\.$/, '')}: ${[...us].join(', ')}.`);
+  if (away.length) {
+    const ports = away.map((me) => me - 0x0100).sort((a, b) => a - b);
+    footnotes.push(`LAN port${ports.length > 1 ? 's' : ''} ${ports.join(', ')} of the HGU layout `
+      + `(PPTP ${away.map(hex4).join(', ')}): the OLT set ${ports.length > 1 ? 'them' : 'it'} up, `
+      + 'and the stick has one port, so nothing reaches them.');
   }
-  return { bridges, lanes, fallbacks: [...new Set(fallbacks)], notes: [...new Set(notes)] };
+  /* A VLAN on the PPTP and the VEIP bridge alike: which one carries it up
+     is the Luna service order (nijika order pptp|veip|mib, pptp by default);
+     downstream both deliver. */
+  const both = [];
+  for (const l of lanes.filter((x) => x.kind === 'PPTP' && !x.blocked)) {
+    if (lanes.some((x) => x.kind === 'VEIP' && !x.blocked && x.router === l.router) && !both.includes(l.router)) {
+      both.push(l.router);
+    }
+  }
+  const notes = both.length ? [`${both.join(' and ')} ${both.length > 1 ? 'are' : 'is'} on the PPTP and the VEIP `
+    + 'bridge alike: upstream goes on the PPTP bridge\'s GEM port with the Luna default service order '
+    + '(nijika order pptp), on the VEIP\'s with nijika order veip; downstream both deliver.'] : [];
+  return { bridges, lanes, fallbacks: footnotes, notes };
 }
 
 /* What the router's WAN port has to send: the router side of every lane
-   that reaches it. */
+   that reaches it, untagged first, then the VLANs in order. */
 function routerNeeds(map) {
-  const want = map.lanes.filter((l) => l.delivered && !l.blocked && l.action !== 'drop' && l.kind !== 'MCAST')
-    .map((l) => l.router);
-  return [...new Set(want)];
+  const want = [...new Set(map.lanes.filter((l) => l.delivered && !l.blocked && l.action !== 'drop'
+    && l.kind !== 'MCAST').map((l) => l.router))];
+  const num = (x) => Number((/VLAN (\d+)/.exec(x) || [])[1]);
+  return want.sort((a, b) => (Number.isFinite(num(a)) ? num(a) : -1) - (Number.isFinite(num(b)) ? num(b) : -1));
 }
 
 /* --- the page ------------------------------------------------------------ */
 
-const CLASSES = ['47', '84', '171', '266', '268', '262', '131'];
+const CLASSES = ['47', '84', '171', '266', '281', '268', '262', '131'];
 
 /* The OLT's maker, from the vendor id of its OLT-G (ME 131). */
 const MAKERS = { ALCL: 'Nokia', HWTC: 'Huawei', ZTEG: 'ZTE', FHTT: 'FiberHome', CDKT: 'Calix', DLNK: 'D-Link',
@@ -369,8 +402,12 @@ function draw() {
   const m = MAP.map;
   const needs = routerNeeds(m);
   const big = el('div', 'nj-router-need');
+  /* "VLAN 209, 400, 500", or "untagged, VLAN 500". */
+  const vl = needs.filter((x) => /^VLAN \d+$/.test(x)).map((x) => x.slice(5));
+  const rest = needs.filter((x) => !/^VLAN \d+$/.test(x));
+  const need = [...rest, ...(vl.length ? ['VLAN ' + vl.join(', ')] : [])].join(', ');
   big.append(el('span', 'nj-crumb', 'Your router’s WAN'),
-    el('strong', null, needs.length ? needs.join(', ') : m.lanes.length ? 'Nothing reaches it' : 'No service yet'));
+    el('strong', null, need || (m.lanes.length ? 'Nothing reaches it' : 'No service yet')));
   const why = el('p', 'nj-note');
   why.textContent = MAP.manual.on
     ? `Untagged: this stick tags VLAN ${MAP.manual.vid} itself (VLAN mode manual, GPON > VLAN), in place of the OLT's VLAN translation.`
@@ -392,24 +429,29 @@ function draw() {
   cols.append(el('span', null, 'What the OLT set up'), el('span', null, 'What the stick does'),
     el('span', null, 'What the router gets'));
   body.append(ends, cols);
-  let k = 0;
   m.lanes.forEach((l, i) => {
     const row = el('div', 'nj-lane c' + (l.kind === 'MCAST' ? 'm' : i % 4) + (l.delivered ? '' : ' off')
       + (l.blocked ? ' blocked' : '') + (l.action === 'drop' ? ' drop' : ''));
     const title = el('div', 'nj-lane-title');
-    title.append(el('i', 'nj-lane-dot'), el('span', null, l.kind === 'MCAST' ? 'Multicast' : 'Service ' + (++k)));
+    title.append(el('i', 'nj-lane-dot'), el('span', null, l.kind === 'MCAST' ? 'Multicast'
+      : l.router === 'untagged' ? 'Untagged' : l.router), el('span', 'nj-lane-uni', l.uni));
     row.append(title);
-    const gem = l.gems.length ? 'GEM ' + l.gems.join(', ') : '';
-    const tc = l.tconts.length ? 'T-CONT ' + l.tconts.join(', ') : '';
+    /* The GEM ports both ways with their T-CONT, then the ones that only
+       come down (broadcast, multicast: no T-CONT). */
+    const up = l.gems.filter((g) => g.alloc !== null);
+    const down = l.gems.filter((g) => g.alloc === null);
+    const gem = up.length ? 'GEM ' + up.map((g) => g.gem).join(', ') : '';
+    const tc = [...new Set(up.map((g) => g.alloc))];
+    const dn = down.length ? '\u2193 GEM ' + down.map((g) => g.gem).join(', ') : '';
+    const sub = [gem, tc.length ? 'T-CONT ' + tc.join(', ') : '', dn].filter(Boolean).join(' · ');
     /* The fibre from the OLT to the stick, the cable from it to the router:
        the lane's line runs behind the three. */
     const track = el('div', 'nj-lane-track');
-    track.append(pill('olt', l.olt === null ? '—' : l.olt, [gem, tc].filter(Boolean).join(' · ')),
+    track.append(pill('olt', l.olt === null ? '—' : l.olt, sub),
       pill('mid', l.action, l.uni), pill('router', l.router, l.delivered ? 'WAN' : 'not delivered'));
     row.append(track);
     const say = el('p', 'nj-lane-say');
-    say.textContent = sentence(l) + (l.why ? ` Not delivered: ${l.why}.` : '')
-      + (l.notes.length ? ' ' + l.notes.join('; ') + '.' : '');
+    say.textContent = sentence(l) + (l.notes.length ? ' ' + l.notes.join('; ') + '.' : '');
     say.title = 'From ' + l.source + ', bridge ' + hex4(l.bridge);
     row.append(say);
     body.append(row);

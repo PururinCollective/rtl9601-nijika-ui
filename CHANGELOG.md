@@ -52,6 +52,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   HGU layout the stick does not have is "not delivered". odi-ui's cards follow as "Table by
   table", and one Read again reads both. The preview serves the ISP1 captures of classes 171,
   266, 329 and 11.
+- Status > Service, checked on a real line's MIB: a lane is named by the router's VLAN and shows
+  the GEM ports that carry that VLAN (those of the fibre-side ports whose VLAN filter admits it,
+  through the 802.1p mapper; a GEM port with no T-CONT, broadcast or multicast, marked as coming
+  down only); a rule repeated in a table is one lane; the rules that drop (untagged frames, any
+  other VLAN, any other double-tagged frame) are one footnote each with the UNIs they are on, and
+  the LAN ports of the HGU layout the stick has not are one footnote; a VLAN on the PPTP and the
+  VEIP bridge alike says which carries it up under the Luna service order. A multicast port's GEM
+  comes from class 281. The router's VLANs read "VLAN 209, 400, 500".
+- `scripts/preview.sh`: `PREVIEW_OMCI=<dir>` serves `omcicli mib get <class>` from
+  `<dir>/<class>.txt` and leaves the VLAN mode to the OLT, to see the pages on a real line's MIB
+  kept outside this repository.
 - ONT Identity: POTS Ports, from the preset (the phone ports the emulated device has: 2 for the
   HG8240H, none for the NIJIKA generic one) or Custom.
 - ONT Authentication: the serial number and the PLOAM password take their stored form when the

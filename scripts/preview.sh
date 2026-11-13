@@ -15,6 +15,9 @@
 #   scripts/preview.sh                     -> http://127.0.0.1:18080
 #   PREVIEW_TRIAL=1 scripts/preview.sh     -> the same, mid trial boot
 #   PREVIEW_DEV=1 scripts/preview.sh       -> with confirm-arp (192.168.1.2) and breadcrumbs.on set
+#   PREVIEW_OMCI=<dir> scripts/preview.sh  -> the MIB from <dir>/<class>.txt, each what omcicli mib get
+#                                             prints, and the VLAN mode left to the OLT (a capture of
+#                                             a real line, kept outside this repository)
 #   scripts/shot.mjs                       -> screenshots + console errors
 #   docker rm -f odi-ui-preview            -> stop it
 set -e
@@ -23,7 +26,12 @@ docker rm -f odi-ui-preview >/dev/null 2>&1 || true
 # --cap-add SYSLOG so the Tools tab has a kernel log to show: klogctl is
 # refused in a default container. It reads the host VM's buffer, which is not
 # what a stick would say but is the right SHAPE -- priority prefixes and all.
-docker run -d --name odi-ui-preview -p 18080:18080 --cap-add SYSLOG -e PREVIEW_TRIAL -e PREVIEW_DEV \
+OMCI_MOUNT=()
+if [ -n "${PREVIEW_OMCI:-}" ]; then
+  [ -d "$PREVIEW_OMCI" ] || { echo "PREVIEW_OMCI: no directory $PREVIEW_OMCI" >&2; exit 1; }
+  OMCI_MOUNT=(-v "$(cd "$PREVIEW_OMCI" && pwd)":/omci:ro)
+fi
+docker run -d --name odi-ui-preview -p 18080:18080 --cap-add SYSLOG -e PREVIEW_TRIAL -e PREVIEW_DEV -e PREVIEW_OMCI "${OMCI_MOUNT[@]}" \
   -v "$PWD":/src -w /src "$IMAGE" bash -c '
     mkdir -p /etc/confd /etc/config /etc/scripts
     cp schema/*.tsv web/*.html web/*.css web/*.js /etc/confd/
@@ -92,6 +100,8 @@ DIAG
     cat > /bin/omcicli <<"OMCICLI"
 #!/bin/sh
 frame() { printf "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n%s\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n" "$1"; }
+# PREVIEW_OMCI: a class the capture has is answered from it.
+if [ "$1 $2" = "mib get" ] && [ -f "/omci/$3.txt" ]; then cat "/omci/$3.txt"; exit 0; fi
 case "$1 $2 $3" in
 "mib get 84")  cat /src/scripts/fixtures/omci/84-VlanTagFilterData.txt ;;
 "mib get 171") cat /src/scripts/fixtures/omci/171-isp1.txt ;;
@@ -155,6 +165,8 @@ NV
     chmod +x /bin/nv
     # PREVIEW_TRIAL=1 previews a trial boot: running slot 0, committed slot 1.
     if [ -n "$PREVIEW_TRIAL" ]; then sed -i "s/sw_commit=0/sw_commit=1/g" /bin/nv; fi
+    # PREVIEW_OMCI previews a real line: its VLANs are the OLT ones, not the manual tag.
+    if [ -n "$PREVIEW_OMCI" ]; then sed -i "s/\"VLAN_CFG_TYPE\" Value=\"1\"/\"VLAN_CFG_TYPE\" Value=\"0\"/" /etc/scripts/flash; fi
     # PREVIEW_DEV=1 previews the two development files on the Firmware tab.
     if [ -n "$PREVIEW_DEV" ]; then echo 192.168.1.2 > /etc/config/confirm-arp; : > /etc/config/breadcrumbs.on; fi
     # The slot probe reads /proc/mtd and the first 64 bytes of each kernel
