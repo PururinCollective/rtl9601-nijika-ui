@@ -4,14 +4,23 @@
  * line (PON), and how full the shared fibre is (every ONU on it).
  *
  * The figures come from the shell's poll (/api/status, every few seconds)
- * and /api/init; the OLT vendor and the VLANs from the MIB, read once when
- * the page is shown with the line in service.
+ * and the stored values; the OLT vendor and the VLANs from the MIB, read
+ * once when the page is shown with the line in service.
+ *
+ * The drawing of the stick in the PON box follows the one on the Peter-Pon
+ * status page (the light arriving, turned down into the photodiode at the
+ * WDM filter, and the laser answering up the same fibre), drawn here anew.
  */
 
 import { el } from './dom.js';
+import { S } from './state.js';
 import {
-  signed, uptimeText, bitrate, kib, macText, serialText, laneText, readLine, portRates, ponLoad, cpuBusy,
+  signed, uptimeText, bitrate, kib, macText, serialText, laneText, readLine, portRates, ponSample, ponLoad, cpuBusy,
 } from './nj-data.js';
+
+/* What the stick calls itself: the part number in the ODI V08 EEPROM, and
+   the label the BPI-R4 SFP quirk for this stick carries. */
+const MODEL = 'GPON-ONU-SFP2GFX';
 
 const STATE_NAMES = { O1: 'Initial', O2: 'Standby', O3: 'Serial number', O4: 'Ranging',
   O5: 'In Service', O6: 'Intermittent', O7: 'Emergency stop' };
@@ -30,12 +39,12 @@ const DASH = '—';
 
 /* A LuCI key/value table: label left, value right, a row per fact. */
 function kvTable(rows) {
-  const t = el('table', 'table kv');
+  const t = el('table', 'nj-kv');
   const cells = {};
   for (const [key, label] of rows) {
-    const tr = el('tr', 'tr');
-    const td = el('td', 'td', DASH);
-    tr.append(el('td', 'td left', label), td);
+    const tr = el('tr');
+    const td = el('td', null, DASH);
+    tr.append(el('td', 'left', label), td);
     t.append(tr);
     cells[key] = td;
   }
@@ -48,68 +57,168 @@ function card(title, cls) {
   return c;
 }
 
-/* One figure of the PON box: a label, a dot for its verdict, the value. */
-function stat(label) {
+/* One figure of the PON box: a label, a dot for its verdict, the value,
+   and a short line under it saying what it is. */
+function stat(label, sub) {
   const box = el('div', 'stat');
   const dot = el('i', 'dot none');
   const v = el('span', 'stat-value', DASH);
-  const head = el('span', 'stat-label', label);
   const line = el('div', 'stat-line');
+  const note = el('span', 'stat-sub', sub || '');
   line.append(dot, v);
-  box.append(head, line);
-  return { box, set(text, ver) { v.textContent = text === null ? DASH : text; dot.className = 'dot ' + (ver || 'none'); }, v };
+  box.append(el('span', 'stat-label', label), line, note);
+  return {
+    box, v,
+    set(value, ver, text) {
+      v.textContent = '';
+      if (value instanceof Node) v.append(value); else v.textContent = value === null ? DASH : value;
+      dot.className = 'dot ' + (ver || 'none');
+      if (text !== undefined) note.textContent = text;
+    },
+  };
 }
 
+/* --- the stick ----------------------------------------------------------- */
+
 const SVG = 'http://www.w3.org/2000/svg';
-const svg = (tag, attrs) => {
+const svg = (tag, attrs, text) => {
   const n = document.createElementNS(SVG, tag);
   for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, v);
+  if (text !== undefined) n.textContent = text;
   return n;
 };
 
-/* The fibre going into the stick, and the stick's edge connector to the
-   host: the light in is drawn moving while the line is in service. */
-function diagram() {
-  const s = svg('svg', { viewBox: '0 0 240 72', class: 'pon-diagram', 'aria-hidden': 'true' });
-  const fibre = svg('path', { d: 'M4 36 H86', class: 'fibre' });
-  const head = svg('path', { d: 'M84 29 L96 36 L84 43 Z', class: 'fibre-head' });
-  const body = svg('rect', { x: 98, y: 16, width: 104, height: 40, rx: 5, class: 'stick' });
-  const port = svg('rect', { x: 98, y: 26, width: 12, height: 20, rx: 2, class: 'stick-port' });
-  const label = svg('text', { x: 152, y: 41, class: 'stick-label', 'text-anchor': 'middle' });
-  label.textContent = 'ONU';
-  const pins = svg('g', { class: 'pins' });
-  for (let i = 0; i < 6; i++) pins.append(svg('rect', { x: 204, y: 22 + i * 5, width: 14, height: 3, rx: 1 }));
-  s.append(fibre, head, body, port, label, pins);
-  return { s, set(cls) { s.setAttribute('class', 'pon-diagram ' + cls); } };
+const FY = 64;        /* the fibre's axis */
+const N_DS = 6;       /* light particles on the way in */
+const N_US = 4;       /* laser pulses on the way out */
+const DUR = { ds: 3200, us: 2600 };
+
+/* The way each one travels, as keyframes of a translation: down the fibre
+   to the filter, then down into the photodiode; and from the laser out. */
+const DS_PATH = [
+  { transform: `translate(-4px, ${FY - 2.5}px)`, opacity: 0 },
+  { opacity: 1, offset: 0.07 },
+  { transform: `translate(108px, ${FY - 2.5}px)`, offset: 0.78 },
+  { opacity: 1, offset: 0.9 },
+  { transform: `translate(108px, ${FY + 16}px)`, opacity: 0 },
+];
+const US_PATH = [
+  { transform: `translate(162px, ${FY + 2.5}px)`, opacity: 0 },
+  { opacity: 1, offset: 0.08 },
+  { opacity: 1, offset: 0.88 },
+  { transform: `translate(-8px, ${FY + 2.5}px)`, opacity: 0 },
+];
+
+/* A rate as a speed: an idle line still moves, slowly; a gigabit runs. */
+const speed = (bps) => (bps === null || bps === undefined ? 0.5
+  : Math.max(0.5, Math.min(3.2, 0.5 + Math.log10(1 + bps / 1000) / 2.2)));
+
+function drawStick(model) {
+  const s = svg('svg', { viewBox: '0 0 320 128', class: 'nj-stick', role: 'img' });
+  s.append(svg('title', {}, 'The light arriving (1490 nm, down) and the laser answering (1310 nm, up). '
+    + 'The colours and the speed are symbolic: both are infrared, and the speed follows the traffic.'));
+  s.append(svg('line', { class: 'jacket', x1: -6, y1: FY, x2: 40, y2: FY }));
+  s.append(svg('line', { class: 'core', x1: -6, y1: FY, x2: 66, y2: FY }));
+  s.append(svg('rect', { class: 'conn', x: 32, y: FY - 14, width: 34, height: 28, rx: 4 }));
+  s.append(svg('rect', { class: 'shell', x: 64, y: 22, width: 236, height: 84, rx: 12 }));
+  s.append(svg('line', { class: 'shell-hi', x1: 78, y1: 25.5, x2: 286, y2: 25.5 }));
+  s.append(svg('rect', { class: 'pcb', x: 72, y: 30, width: 132, height: 68, rx: 7 }));
+  s.append(svg('line', { class: 'core', x1: 64, y1: FY, x2: 168, y2: FY }));
+  s.append(svg('line', { class: 'filter', x1: 100, y1: FY - 11, x2: 116, y2: FY + 11 }));
+  s.append(svg('rect', { class: 'can', x: 168, y: FY - 12, width: 32, height: 24, rx: 5 }));
+  s.append(svg('circle', { class: 'glow-ld', cx: 166, cy: FY, r: 15 }));
+  s.append(svg('circle', { class: 'ld', cx: 168, cy: FY, r: 4.5 }));
+  s.append(svg('rect', { class: 'can', x: 96, y: FY + 18, width: 24, height: 15, rx: 4 }));
+  s.append(svg('circle', { class: 'glow-pd', cx: 108, cy: FY + 18, r: 13 }));
+  s.append(svg('circle', { class: 'pd', cx: 108, cy: FY + 18, r: 4.5 }));
+  s.append(svg('text', { class: 'lbl ds', x: 124, y: FY + 31 }, '1490 nm ↓'));
+  s.append(svg('text', { class: 'lbl us', x: 200, y: FY - 17, 'text-anchor': 'end' }, '1310 nm ↑'));
+  const cut = model.lastIndexOf('-');
+  s.append(svg('text', { class: 'eng', x: 252, y: FY - 3, 'text-anchor': 'middle' }, cut > 0 ? model.slice(0, cut) : 'GPON SFP'));
+  s.append(svg('text', { class: 'eng', x: 252, y: FY + 10, 'text-anchor': 'middle' }, cut > 0 ? model.slice(cut + 1) : model));
+  for (let i = 0; i < 4; i++) s.append(svg('rect', { class: 'gold', x: 300, y: 40 + i * 13, width: 16, height: 8, rx: 1.5 }));
+  s.append(svg('path', { class: 'arrow ds', d: `M6 ${FY - 15}h16m-4 -4l4 4l-4 4` }));
+  s.append(svg('path', { class: 'arrow us', d: `M22 ${FY + 15}h-16m4 -4l-4 4l4 4` }));
+
+  const ds = svg('g', { class: 'p-ds' });
+  const us = svg('g', { class: 'p-us' });
+  for (let i = 0; i < N_DS; i++) ds.append(svg('circle', { r: 2.8 }));
+  for (let i = 0; i < N_US; i++) us.append(svg('ellipse', { rx: 4.5, ry: 1.9 }));
+  s.append(ds, us);
+
+  /* The motion, with the Web Animations API: a rate change sets each
+     animation's playback rate, which keeps every particle where it is. */
+  const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const anims = { ds: [], us: [] };
+  if (!still && typeof Element.prototype.animate === 'function') {
+    [...ds.children].forEach((c, k) => anims.ds.push(c.animate(DS_PATH,
+      { duration: DUR.ds, iterations: Infinity, delay: -k * DUR.ds / N_DS })));
+    [...us.children].forEach((c, k) => anims.us.push(c.animate(US_PATH,
+      { duration: DUR.us, iterations: Infinity, delay: -k * DUR.us / N_US })));
+  } else {
+    ds.style.display = 'none';
+    us.style.display = 'none';
+  }
+  const all = () => [...anims.ds, ...anims.us];
+  const rate = (list, r) => { for (const a of list) if (a.playbackRate !== r) a.updatePlaybackRate(r); };
+  const onVis = () => { for (const a of all()) { if (document.hidden) a.pause(); else a.play(); } };
+  document.addEventListener('visibilitychange', onVis);
+
+  return {
+    s,
+    /* light: dBm or null; los; laser on; rates in bit/s. */
+    set({ rx, los, laser, down, up }) {
+      const nolight = los || rx === null;
+      s.setAttribute('class', 'nj-stick' + (nolight ? ' nolight' : '') + (los ? ' los' : '') + (laser ? '' : ' laseroff'));
+      /* Brighter light, brighter particles: -28 to -8 dBm. */
+      if (rx !== null) ds.style.opacity = String(Math.max(0.35, Math.min(1, 0.35 + (rx + 28) / 20 * 0.65)));
+      rate(anims.ds, speed(down));
+      rate(anims.us, speed(up));
+    },
+    stop() {
+      document.removeEventListener('visibilitychange', onVis);
+      for (const a of all()) a.cancel();
+    },
+  };
 }
 
-function renderDevice(host, f, ctx) {
+/* --- the page ------------------------------------------------------------ */
+
+function renderDevice(host) {
   const top = el('div', 'nj-row2');
 
   const sfp = card('SFP');
-  const S = kvTable([
+  const SF = kvTable([
     ['host', 'Hostname'], ['model', 'Model'], ['arch', 'Architecture'], ['platform', 'Target Platform'],
     ['fw', 'Firmware Version'], ['kernel', 'Kernel Version'], ['time', 'Local Time'], ['uptime', 'Uptime'],
     ['load', 'Load Average'], ['mem', 'Memory Usage'],
   ]);
-  sfp.append(S.t);
+  sfp.append(SF.t);
 
   const ont = card('ONT');
   const O = kvTable([
     ['ip', 'IP Address'], ['mask', 'Subnet Mask'], ['mac', 'MAC Address'], ['lane', 'Interface Speed'],
-    ['sn', 'SN'], ['olt', 'OLT'], ['vlans', 'VLANs'],
+    ['sn', 'SN'], ['olt', 'OLT'],
   ]);
-  ont.append(O.t);
+  /* The VLANs get the rest of the box, as tall as the SFP one beside it. */
+  const vl = el('div', 'nj-vlans');
+  const vlHead = el('div', 'nj-vlans-head');
+  vlHead.append(el('span', null, 'VLANs'), el('small', null, 'what the OLT lets through, and to which side'));
+  const vlBody = el('div', 'nj-vlans-body');
+  vlBody.append(el('p', 'hint', DASH));
+  vl.append(vlHead, vlBody);
+  ont.append(O.t, vl);
   top.append(sfp, ont);
 
   const pon = card('PON', 'nj-pon');
   const body = el('div', 'pon-body');
-  const dia = diagram();
+  const stick = drawStick(MODEL);
   const grid = el('div', 'pon-stats');
-  const P = { state: stat('State'), rx: stat('Laser in'), tx: stat('Laser out'),
-    temp: stat('Temperature'), traffic: stat('Traffic') };
+  const P = { state: stat('State', 'Operation state'), rx: stat('Laser in', '1490 nm, downstream'),
+    tx: stat('Laser out', '1310 nm, upstream'), temp: stat('Temperature', 'module'),
+    traffic: stat('Traffic', 'live, from the port counters') };
   for (const k of ['state', 'rx', 'tx', 'temp', 'traffic']) grid.append(P[k].box);
-  body.append(dia.s, grid);
+  body.append(stick.s, grid);
   const foot = el('div', 'cbi-section-foot');
   pon.append(body, foot);
 
@@ -131,23 +240,22 @@ function renderDevice(host, f, ctx) {
 
   /* --- what changes only with the page ---------------------------------- */
 
-  const vals = (ctx.init && ctx.init.values) || {};
-  const fw = (ctx.init && ctx.init.firmware) || {};
+  const vals = S.VALUES || {};
+  const fw = S.FW || {};
   const build = fw.build || {};
   const env = fw.env || {};
   const active = env.sw_active;
   const slot = (fw.slots || {})[active] || {};
   const firmware = build.image || fw.running || env['sw_version' + active] || null;
 
-  S.cells.model.textContent = vals.GPON_ONU_MODEL || vals.HW_CWMP_PRODUCTCLASS || DASH;
-  S.cells.fw.textContent = firmware || DASH;
-  S.cells.kernel.textContent = build.kernel ? 'Linux ' + build.kernel : slot.kernel || DASH;
+  SF.cells.model.textContent = MODEL;
+  SF.cells.fw.textContent = firmware || DASH;
+  SF.cells.kernel.textContent = build.kernel ? 'Linux ' + build.kernel : slot.kernel || DASH;
   O.cells.ip.textContent = vals.LAN_IP_ADDR || DASH;
   O.cells.mask.textContent = vals.LAN_SUBNET || DASH;
   O.cells.mac.textContent = macText(vals.ELAN_MAC_ADDR) || DASH;
   O.cells.sn.textContent = serialText(vals.GPON_SN) || DASH;
 
-  foot.textContent = '';
   const hood = el('a', null, 'Under the hood');
   hood.href = '#status/hood';
   foot.append(el('span', null, firmware || 'Nijika Luna'), el('span', 'sep', '·'), hood,
@@ -158,22 +266,25 @@ function renderDevice(host, f, ctx) {
   const memBar = el('div', 'nj-bar small');
   const memFill = el('div', 'nj-bar-fill');
   memBar.append(memFill);
-  S.cells.mem.textContent = '';
-  S.cells.mem.append(memText, memBar);
+  SF.cells.mem.textContent = '';
+  SF.cells.mem.append(memText, memBar);
 
   /* --- the clock and the uptime, ticking between polls ------------------ */
 
   let upAt = null;
+  const clock = () => {
+    if (!upAt || !upAt.clock) return null;
+    return upAt.clock.now + (Date.now() - upAt.clock.at) / 1000;
+  };
   function tick() {
-    if (ctx.clock) {
-      const now = ctx.clock.now + (Date.now() - ctx.clock.at) / 1000;
-      S.cells.time.textContent = new Date(now * 1000).toLocaleString()
-        + (ctx.clock.ntp && ctx.clock.ntp.last_sync ? ' (NTP)' : '');
+    const now = clock();
+    if (now !== null) {
+      SF.cells.time.textContent = new Date(now * 1000).toLocaleString()
+        + (upAt.clock.ntp && upAt.clock.ntp.last_sync ? ' (NTP)' : '');
     }
-    if (upAt) S.cells.uptime.textContent = uptimeText(upAt.v + (Date.now() - upAt.at) / 1000) || DASH;
+    if (upAt && upAt.v !== null) SF.cells.uptime.textContent = uptimeText(upAt.v + (Date.now() - upAt.at) / 1000) || DASH;
   }
   const ticker = setInterval(tick, 1000);
-  tick();
 
   /* --- the MIB, once the line is in service ----------------------------- */
 
@@ -181,35 +292,41 @@ function renderDevice(host, f, ctx) {
   async function loadLine() {
     line = 'reading';
     O.cells.olt.textContent = 'reading…';
-    O.cells.vlans.textContent = 'reading…';
+    vlBody.textContent = '';
+    vlBody.append(el('p', 'hint', 'Reading the MIB…'));
     const r = await readLine();
     line = r;
     O.cells.olt.textContent = r.olt || DASH;
-    O.cells.vlans.textContent = '';
+    vlBody.textContent = '';
     if (!r.vlans.length) {
-      O.cells.vlans.textContent = r.ok ? 'None provisioned' : 'MIB not readable';
+      vlBody.append(el('p', 'hint', r.ok ? 'None provisioned: the OLT set no VLAN filter.' : 'The MIB could not be read.'));
       return;
     }
     const ul = el('ul', 'vlans');
     for (const v of r.vlans) {
-      const li = el('li', null, String(v.vid));
+      const li = el('li');
+      li.append(el('span', 'vid', String(v.vid)));
       for (const k of v.kinds) li.append(el('span', 'tag ' + k.toLowerCase(), k));
+      if (!v.kinds.length) li.append(el('span', 'tag', 'ANI only'));
       ul.append(li);
     }
-    O.cells.vlans.append(ul);
+    vlBody.append(ul);
   }
 
   /* --- every poll ------------------------------------------------------- */
 
+  let prevCpu = null;
+  let prevPon = null;
   function update(c) {
     const st = c.status;
-    S.cells.host.textContent = st.hostname || DASH;
-    S.cells.arch.textContent = st.cpuModel || DASH;
-    S.cells.platform.textContent = st.systemType || DASH;
-    if (st.uptime !== null) upAt = { v: st.uptime, at: st.at };
+    upAt = { v: st.uptime, at: st.at, clock: c.clock };
+    SF.cells.host.textContent = st.hostname || DASH;
+    SF.cells.arch.textContent = st.cpuModel || DASH;
+    SF.cells.platform.textContent = st.systemType || DASH;
 
-    const busy = cpuBusy(st.raw.cpu);
-    S.cells.load.textContent = st.load
+    const busy = cpuBusy(prevCpu, st.raw.cpu);
+    prevCpu = st.raw.cpu;
+    SF.cells.load.textContent = st.load
       ? st.load.map((x) => x.toFixed(2)).join(', ') + (busy === null ? '' : ` (${busy.toFixed(0)}%)`)
       : busy === null ? DASH : `CPU ${busy.toFixed(0)}%`;
 
@@ -224,29 +341,44 @@ function renderDevice(host, f, ctx) {
       memText.textContent = DASH;
       memBar.hidden = true;
     }
+    tick();
 
-    const lane = laneText(st.hostMode, (c.init && c.init.values || {}).LAN_SDS_MODE);
+    const lane = laneText(st.hostMode, (S.VALUES || {}).LAN_SDS_MODE);
     O.cells.lane.textContent = st.hostLink === false ? 'No link' + (lane ? ' (' + lane + ')' : '') : lane || DASH;
 
     const inService = st.state === 'O5';
     P.state.set(st.state ? `${st.state} (${STATE_NAMES[st.state] || '?'})` : null,
-      !st.state ? 'none' : inService ? 'good' : 'bad');
-    P.rx.set(st.rx === null ? null : signed(st.rx, 1) + ' dBm', st.los ? 'bad' : verdict(st.rx, WINDOW.rx));
+      !st.state ? 'none' : inService ? 'good' : 'bad',
+      !st.state ? 'No state reported' : inService ? 'Registered and carrying traffic' : 'Not yet operational');
+    const vr = st.los ? 'bad' : verdict(st.rx, WINDOW.rx);
+    P.rx.set(st.rx === null ? null : signed(st.rx, 1) + ' dBm', vr,
+      '1490 nm, downstream' + (st.los ? ', loss of signal' : vr === 'good' ? ', in the B+ window'
+        : vr === 'warn' ? ', near the edge' : vr === 'bad' ? ', out of the window' : ''));
     P.tx.set(st.tx === null ? null : signed(st.tx, 1) + ' dBm', verdict(st.tx, WINDOW.tx));
-    const chip = st.chip && typeof st.chip.celsius === 'number' ? `, SoC ${signed(st.chip.celsius, 0)}°C` : '';
-    P.temp.set(st.temp === null ? null : signed(st.temp, 1) + '°C' + chip,
-      st.chip && st.chip.crit_alarm ? 'bad' : st.chip && st.chip.max_alarm ? 'warn' : st.temp === null ? 'none' : 'good');
+    const hasChip = st.chip && typeof st.chip.celsius === 'number';
+    P.temp.set(st.temp === null ? null : signed(st.temp, 1) + '°C' + (hasChip ? ` / ${signed(st.chip.celsius, 1)}°C` : ''),
+      st.chip && st.chip.crit_alarm ? 'bad' : st.chip && st.chip.max_alarm ? 'warn' : st.temp === null ? 'none' : 'good',
+      hasChip ? 'module / chip' : 'module');
     const r = portRates(c.prev, st);
-    P.traffic.set(r && r.down !== null && r.up !== null
-      ? `▼ ${bitrate(r.down)}   ▲ ${bitrate(r.up)}` : inService ? 'measuring' : null,
-    r ? 'good' : 'none');
+    if (r && r.down !== null && r.up !== null) {
+      const t = document.createDocumentFragment();
+      t.append(el('span', 'ds', '▼ ' + bitrate(r.down)), document.createTextNode('   '),
+        el('span', 'us', '▲ ' + bitrate(r.up)));
+      P.traffic.set(t, 'good');
+    } else {
+      P.traffic.set(inService ? 'measuring' : null, 'none');
+    }
     P.traffic.v.classList.add('pre');
-    dia.set(st.los ? 'los' : inService ? 'flowing' : 'idle');
+    stick.set({
+      rx: st.rx, los: st.los,
+      laser: !!st.state && st.state !== 'O1' && st.state !== 'O7' && st.tx !== null,
+      down: r && r.down, up: r && r.up,
+    });
 
-    const have = typeof st.raw.ds_superframe === 'string' && typeof st.raw.ds_gem_idle === 'string';
-    shared.hidden = !have;
-    if (have) {
-      const load = inService ? ponLoad(st.raw) : (ponLoad(null), null);
+    const sample = ponSample(st.raw, st.at);
+    shared.hidden = !sample;
+    if (sample) {
+      const load = inService ? ponLoad(prevPon, sample) : null;
       fill.style.width = load ? Math.max(0.5, load.pct).toFixed(1) + '%' : '0';
       fill.className = 'nj-bar-fill ' + (!load ? '' : load.pct >= 80 ? 'bad' : load.pct >= 50 ? 'warn' : 'good');
       sharedNote.textContent = !inService ? 'No downstream outside O5.'
@@ -255,15 +387,17 @@ function renderDevice(host, f, ctx) {
           + `≈ ${load.mbps < 100 ? load.mbps.toFixed(1) : load.mbps.toFixed(0)} of ${load.of.toFixed(0)} Mbit/s `
           + 'sent to all ONUs on this fibre.';
     }
+    prevPon = sample;
 
     if (inService && line === null) loadLine();
     if (!inService && line === null) {
       O.cells.olt.textContent = DASH;
-      O.cells.vlans.textContent = 'Not in service';
+      vlBody.textContent = '';
+      vlBody.append(el('p', 'hint', 'Not in service: the OLT has provisioned nothing yet.'));
     }
   }
 
-  return { update, leave() { clearInterval(ticker); } };
+  return { update, leave() { clearInterval(ticker); stick.stop(); } };
 }
 
 export { renderDevice };

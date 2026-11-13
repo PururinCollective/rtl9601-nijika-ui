@@ -9,8 +9,6 @@
  */
 
 import { get } from './dom.js';
-import { ponLoad } from './status.js';
-import { cpuBusy } from './overview.js';
 import { parseOmci, attr } from './omci.js';
 
 /* diag echoes each command after its prompt, so the reply splits back into
@@ -99,6 +97,53 @@ function portRates(prev, cur, port = '2') {
     return d < 0 ? null : d * 8 / dt;
   };
   return { down: r('ifInOctets'), up: r('ifOutOctets') };
+}
+
+/*
+ * CPU busy between two polls, from the cpu line of /proc/stat: everything
+ * but idle and iowait. The previous line is passed in, not kept here: the
+ * odi-ui views poll the same answer and keep their own (overview.js).
+ */
+function cpuBusy(prevLine, line) {
+  const f = (l) => (typeof l === 'string' ? l.trim().split(/\s+/).map(Number) : null);
+  const a = f(prevLine);
+  const b = f(line);
+  if (!a || !b || a.length < 4 || b.length < 4 || [...a, ...b].some((n) => !Number.isFinite(n))) return null;
+  const tot = (x) => x.reduce((s, n) => s + n, 0);
+  const idle = (x) => x[3] + (x[4] || 0);
+  const dt = tot(b) - tot(a);
+  return dt > 0 ? 100 * (1 - (idle(b) - idle(a)) / dt) : null;
+}
+
+/*
+ * How full the downstream of the whole PON is, between two polls: the share
+ * of each 125 us frame that was not idle GEM frames (five bytes each), with
+ * the FEC parity taken out first. The method is odi-ui status.js ponLoad,
+ * with the samples passed in rather than kept, for the same reason as above.
+ * Null on the first poll and whenever the interval cannot be trusted: FEC
+ * changed, the idle count went backwards, the idle register read full
+ * meanwhile, the frame count moved more than the time allows, or the result
+ * is outside 0 to 100 %.
+ */
+const PON_FRAME = 38880;
+const PON_FEC_PARITY = 153 * 16;
+function ponSample(st, at) {
+  const sf = Number(st && st.ds_superframe);
+  const sat = st && typeof st.ds_gem_idle_sat === 'string' ? Number(st.ds_gem_idle_sat) : 0;
+  let idle = null;
+  try { idle = BigInt(String(st && st.ds_gem_idle).trim()); } catch (e) { /* not there */ }
+  if (!st || typeof st.ds_superframe !== 'string' || !Number.isFinite(sf) || !Number.isFinite(sat) || idle === null) return null;
+  return { at, sf, idle, sat, fec: typeof st.ds_fec === 'string' ? st.ds_fec.trim() : '' };
+}
+function ponLoad(prev, cur) {
+  if (!prev || !cur || cur.idle < prev.idle || cur.fec !== prev.fec || cur.sat !== prev.sat) return null;
+  const frames = (cur.sf - prev.sf + 0x40000000) % 0x40000000;
+  if (frames <= 0 || frames > (cur.at - prev.at) * 8 * 1.1 + 16) return null;
+  const payload = PON_FRAME - (cur.fec === '1' ? PON_FEC_PARITY : 0);
+  const used = payload - Number(cur.idle - prev.idle) * 5 / frames;
+  const pct = 100 * used / payload;
+  if (pct < 0 || pct > 100) return null;
+  return { pct, mbps: used * 8 * 8000 / 1e6, of: payload * 8 * 8000 / 1e6 };
 }
 
 /* --- formatting ---------------------------------------------------------- */
@@ -249,5 +294,5 @@ async function readLine() {
 
 export {
   sections, parsePorts, parseStatus, portRates, signed, uptimeText, bitrate, kib, macText,
-  serialText, vendorText, laneText, vlanMap, readLine, ponLoad, cpuBusy, SDS_NAMES,
+  serialText, vendorText, laneText, vlanMap, readLine, ponSample, ponLoad, cpuBusy, SDS_NAMES,
 };

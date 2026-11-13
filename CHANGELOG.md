@@ -6,18 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
-- Nijika UI (rtl9601-nijika-ui): a LuCI-style page at `/`, with a top bar of drop-down menus
-  (Status, Network, GPON, System, the classic Nijika page tree), white cards on a grey canvas,
-  a content column capped at 1180 px, light and dark themes (the odi-ui theme key) and a menu
-  panel on a phone. First page: Status > Device, with the SFP box (host name, model, CPU,
-  platform, firmware and kernel, local time, uptime, load, memory), the ONT box (management
-  address, MAC, host lane in `LAN_SDS_MODE` numbering, serial number, OLT vendor, and the
-  VLANs the OLT allowed with the PPTP or VEIP side they reach, from ME 47 and ME 84), the PON
-  box (state, light in and out against the class B+ windows, temperature, traffic) and the
-  shared PON load. Menu entries without a Nijika page yet open the odi-ui view, which stays
-  whole at `/odi`; its device name links back. Files `nijika.html`, `nijika.css`,
-  `nijika.js`, `nj-data.js`, `nj-device.js`; `scripts/nijika-check.mjs` runs the parsers
-  in `make check`.
+- Nijika UI (rtl9601-nijika-ui): a LuCI-style page at `/` over the odi-ui modules, with a top bar
+  of drop-down menus in the classic Nijika page tree, white cards on a grey canvas, a content
+  column capped at 1180 px, light and dark themes (the odi-ui theme key) and a menu panel on a
+  phone. Every odi-ui view is on it: Status (Device, Service, OMCI Topology, Phone, Under the
+  hood), Network (LAN, Route), GPON (ONT Authentication with an ONU SN & PLOAM tab and a LOID
+  tab, ONT Identity, VLAN, Advanced), System (Management, Backup & Reset, Firmware Update,
+  Advanced, Logs). `nijika.html` carries the odi-ui markup with its element ids, so the odi-ui
+  modules draw into it as on their own page; `nijika.js` does what `app.js` does there, and
+  `nj-account.js` carries its sign-in, SSH key and reset functions. odi-ui's `style.css` draws
+  the parts, in the Nijika palette. A change shows what it costs as a mark with its words in
+  the tooltip (🔄 a service restart, ⚠️ an interruption of the internet, ⟲ a reboot, nothing
+  for a live change) instead of the legend; unsaved changes are counted on the menu. odi-ui
+  stays whole at `/odi`, and its device name links back. `scripts/nijika-html.py` builds
+  `nijika.html` from `index.html`, to run again after a merge that changes it; `make check`
+  fails when the page is out of date.
+- Status > Device: the SFP box (host name, model GPON-ONU-SFP2GFX, CPU, platform, firmware and
+  kernel, local time, uptime, load, memory) and the ONT box (management address, MAC, host lane
+  in `LAN_SDS_MODE` numbering, serial number, OLT vendor) side by side at one height, the rest
+  of the ONT box for the VLANs the OLT allowed with the PPTP or VEIP side they reach (ME 47 and
+  ME 84); the PON box (state, light in and out against the class B+ windows, temperature,
+  traffic) with a drawing of the stick after the Peter-Pon one, the light running in and the
+  laser pulsing out at the speed of the traffic; and the shared PON load. The footer credits
+  the Open PON Foundation and Peter-Pon by Pedro Teixeira. `scripts/nijika-check.mjs` runs the
+  parsers in `make check`.
 - `/api/status` also sends `uptime`, `loadavg`, `hostname`, `cpu_model` and `system_type`,
   plain file reads like the other overview members. The preview has them, and ME 47.
 

@@ -1124,6 +1124,7 @@ const struct web_asset web_assets[] = {
 	{ "/nijika.js",     "nijika.js",   "application/javascript" },
 	{ "/nj-data.js",    "nj-data.js",  "application/javascript" },
 	{ "/nj-device.js",  "nj-device.js", "application/javascript" },
+	{ "/nj-account.js", "nj-account.js", "application/javascript" },
 	{ "/odi",           "index.html",  "text/html; charset=utf-8" },
 	{ "/index.html",    "index.html",  "text/html; charset=utf-8" },
 	{ "/login",         "login.html",  "text/html; charset=utf-8" },

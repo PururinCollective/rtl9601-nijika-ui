@@ -51,6 +51,16 @@ const b = { at: 2000, ports: { 2: { ifInOctets: 3000, ifOutOctets: 50 } } };
 eq(D.portRates(a, b), { down: 8000, up: null }, 'rates, a reset counter gives no figure');
 eq(D.portRates(null, b), null, 'no rate on the first poll');
 
+// CPU and PON load between two polls, from samples passed in.
+eq(D.cpuBusy(' 100 0 100 800 0', ' 200 0 150 850 0'), 75, 'CPU busy: everything but idle and iowait');
+eq(D.cpuBusy(null, ' 200 0 150 850 0'), null, 'no CPU figure on the first poll');
+const p0 = D.ponSample({ ds_superframe: '1000', ds_gem_idle: '0', ds_fec: '0' }, 0);
+const p1 = D.ponSample({ ds_superframe: '9000', ds_gem_idle: String(8000 * 38880 / 5 / 2), ds_fec: '0' }, 1000);
+const pl = D.ponLoad(p0, p1);
+eq([Math.round(pl.pct), Math.round(pl.mbps * 100) / 100], [50, 1244.16], 'PON load: half the frames idle is half in use');
+eq(D.ponLoad(p1, p0), null, 'an idle count going backwards gives no figure');
+eq(D.ponSample({ ds_gem_idle: '5' }, 0), null, 'no superframe count, no sample');
+
 // Formatting.
 eq(D.uptimeText(93784.51), '1d 2h 3m 4s', 'uptime');
 eq(D.uptimeText(59), '0m 59s', 'uptime under a minute');

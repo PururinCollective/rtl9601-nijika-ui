@@ -1,110 +1,142 @@
 /*
  * Nijika UI: a LuCI-style page (the Footstrap look of a LuCI router: a top
  * bar with drop-down menus, white cards on a grey canvas, key/value tables),
- * written here from scratch. The content column is capped, so a wide screen
- * gets margins instead of stretched rows.
+ * written here from scratch, over odi-ui's style.css.
+ *
+ * style.css loads first and draws what the odi-ui modules render (meters,
+ * settings rows, the MIB browser, dialogs). This sheet sets the palette, as
+ * odi-ui's own tokens on <body> (they then win over its :root values for
+ * everything on the page), and the frame around them: the top bar, the
+ * cards, the save bar. The content column is capped, so a wide screen gets
+ * margins instead of stretched rows.
  *
  * Light by default, dark with the browser or with data-theme="dark" on
  * <html>, which the odi-ui pages set too (same storage key).
  */
 
 :root {
-  --bg: #f6f8fa;
-  --panel: #fff;
-  --panel-2: #f6f8fa;
-  --border: #d0d7de;
-  --text: #1f2328;
-  --dim: #59636e;
-  --accent: #0969da;
-  --on-accent: #fff;
-  --good: #1a7f37;
-  --warn: #9a6700;
-  --bad: #cf222e;
-  --none: #8c959f;
-  --gold: #c69026;
-  --shadow: 0 1px 2px rgba(31, 35, 40, .05);
-  --pop: 0 12px 32px rgba(31, 35, 40, .16);
-
-  --radius-lg: 12px;
-  --radius: 10px;
-  --radius-sm: 8px;
-  --hair: 1px solid var(--border);
-  --max: 1180px;
-  --pad: 28px;
-  --bar-h: 60px;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color-scheme: light;
+  --nj-bg: #f6f8fa;
+  --nj-panel: #fff;
+  --nj-panel-2: #f6f8fa;
+  --nj-border: #d0d7de;
+  --nj-border-2: #afb8c1;
+  --nj-text: #1f2328;
+  --nj-dim: #59636e;
+  --nj-accent: #0969da;
+  --nj-on-accent: #fff;
+  --nj-good: #1a7f37;
+  --nj-warn: #9a6700;
+  --nj-bad: #cf222e;
+  --nj-none: #8c959f;
+  --nj-gold: #c69026;
+  --nj-ds: #0a8fb0;
+  --nj-us: #b7791f;
+  --nj-shadow: 0 1px 2px rgba(31, 35, 40, .05);
+  --nj-pop: 0 12px 32px rgba(31, 35, 40, .16);
+  --nj-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #1c2128;
-    --panel: #22272e;
-    --panel-2: #2a3038;
-    --border: #444c56;
-    --text: #cdd9e5;
-    --dim: #8f9cab;
-    --accent: #569df5;
-    --on-accent: #0d1117;
-    --good: #5aad5d;
-    --warn: #c79128;
-    --bad: #ea7a74;
-    --none: #768390;
-    --gold: #b8912f;
-    --shadow: none;
-    --pop: 0 12px 32px rgba(0, 0, 0, .45);
-    color-scheme: dark;
+    --nj-bg: #1c2128;
+    --nj-panel: #22272e;
+    --nj-panel-2: #2a3038;
+    --nj-border: #444c56;
+    --nj-border-2: #5d6874;
+    --nj-text: #cdd9e5;
+    --nj-dim: #8f9cab;
+    --nj-accent: #569df5;
+    --nj-on-accent: #0d1117;
+    --nj-good: #5aad5d;
+    --nj-warn: #c79128;
+    --nj-bad: #ea7a74;
+    --nj-none: #768390;
+    --nj-gold: #b8912f;
+    --nj-ds: #3fc8e4;
+    --nj-us: #e8b04a;
+    --nj-shadow: none;
+    --nj-pop: 0 12px 32px rgba(0, 0, 0, .45);
+    --nj-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #1c2128;
-  --panel: #22272e;
-  --panel-2: #2a3038;
-  --border: #444c56;
-  --text: #cdd9e5;
-  --dim: #8f9cab;
-  --accent: #569df5;
-  --on-accent: #0d1117;
-  --good: #5aad5d;
-  --warn: #c79128;
-  --bad: #ea7a74;
-  --none: #768390;
-  --gold: #b8912f;
-  --shadow: none;
-  --pop: 0 12px 32px rgba(0, 0, 0, .45);
-  color-scheme: dark;
+  --nj-bg: #1c2128;
+  --nj-panel: #22272e;
+  --nj-panel-2: #2a3038;
+  --nj-border: #444c56;
+  --nj-border-2: #5d6874;
+  --nj-text: #cdd9e5;
+  --nj-dim: #8f9cab;
+  --nj-accent: #569df5;
+  --nj-on-accent: #0d1117;
+  --nj-good: #5aad5d;
+  --nj-warn: #c79128;
+  --nj-bad: #ea7a74;
+  --nj-none: #768390;
+  --nj-gold: #b8912f;
+  --nj-ds: #3fc8e4;
+  --nj-us: #e8b04a;
+  --nj-shadow: none;
+  --nj-pop: 0 12px 32px rgba(0, 0, 0, .45);
+  --nj-scheme: dark;
 }
 :root {
-  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
-  --good-soft: color-mix(in srgb, var(--good) 14%, transparent);
-  --warn-soft: color-mix(in srgb, var(--warn) 14%, transparent);
-  --bad-soft: color-mix(in srgb, var(--bad) 14%, transparent);
+  --nj-accent-soft: color-mix(in srgb, var(--nj-accent) 12%, transparent);
+  --nj-good-soft: color-mix(in srgb, var(--nj-good) 14%, transparent);
+  --nj-warn-soft: color-mix(in srgb, var(--nj-warn) 14%, transparent);
+  --nj-bad-soft: color-mix(in srgb, var(--nj-bad) 14%, transparent);
+  --nj-radius-lg: 12px;
+  --nj-radius: 10px;
+  --nj-radius-sm: 8px;
+  --nj-hair: 1px solid var(--nj-border);
+  --nj-max: 1180px;
+  --nj-pad: 28px;
+  --nj-bar-h: 60px;
+  --nj-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --nj-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
-*, *::before, *::after { box-sizing: border-box; }
-[hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; }
+/* odi-ui's tokens, from the palette above, for everything it draws. */
 body {
+  --bg: var(--nj-bg);
+  --surface: var(--nj-panel);
+  --well: var(--nj-panel-2);
+  --field: var(--nj-panel);
+  --line: var(--nj-border);
+  --line-2: var(--nj-border-2);
+  --ink: var(--nj-text);
+  --ink-2: var(--nj-dim);
+  --ink-3: var(--nj-dim);
+  --blue: var(--nj-accent);
+  --blue-fill: var(--nj-accent);
+  --blue-ink: var(--nj-accent);
+  --green: var(--nj-good);
+  --green-ink: var(--nj-good);
+  --red: var(--nj-bad);
+  --red-ink: var(--nj-bad);
+  --yellow: var(--nj-warn);
+  --yellow-ink: var(--nj-warn);
+  --on-fill: var(--nj-on-accent);
+  --sans: var(--nj-font);
+  --r: 8px;
+  color-scheme: var(--nj-scheme);
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 14px/1.5 var(--font);
+  background: var(--nj-bg);
+  color: var(--nj-text);
+  font: 14px/1.5 var(--nj-font);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
-a { color: var(--accent); text-decoration: none; }
+a { color: var(--nj-accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-button { font: inherit; color: inherit; }
-svg { display: block; }
+button.primary { color: var(--nj-on-accent); }
 
 .nj-container {
   width: 100%;
-  max-width: var(--max);
+  max-width: var(--nj-max);
   margin: 0 auto;
-  padding-left: var(--pad);
-  padding-right: var(--pad);
+  padding-left: var(--nj-pad);
+  padding-right: var(--nj-pad);
 }
 
 /* --- the top bar --------------------------------------------------------- */
@@ -113,293 +145,300 @@ svg { display: block; }
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--panel);
-  border-bottom: var(--hair);
-  box-shadow: var(--shadow);
+  background: var(--nj-panel);
+  border-bottom: var(--nj-hair);
+  box-shadow: var(--nj-shadow);
 }
-.nj-bar-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  height: var(--bar-h);
-}
+.nj-bar-row { display: flex; align-items: center; gap: 20px; height: var(--nj-bar-h); }
 .nj-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--text);
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: .01em;
-  white-space: nowrap;
-  min-width: 0;
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+  color: var(--nj-text); font-weight: 700; font-size: 16px; letter-spacing: .01em; white-space: nowrap;
 }
 .nj-brand:hover { text-decoration: none; }
 .nj-brand span { overflow: hidden; text-overflow: ellipsis; }
-.nj-logo { width: 26px; height: 26px; flex: none; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nj-logo { width: 26px; height: 26px; flex: none; fill: none; stroke: var(--nj-accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-.nj-nav .nav {
-  display: flex;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
+.nj-nav .nav { display: flex; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .nj-nav .dropdown { position: relative; }
 .nj-nav a.menu {
-  display: block;
-  padding: 7px 12px;
-  border-radius: var(--radius);
-  color: var(--dim);
-  font-weight: 600;
-  white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px; border-radius: var(--nj-radius);
+  color: var(--nj-dim); font-weight: 600; white-space: nowrap;
 }
 .nj-nav a.menu::after {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin: 0 0 3px 7px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg);
-  opacity: .6;
+  content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 0 3px 1px;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); opacity: .6;
 }
 .nj-nav a.menu:hover,
 .nj-nav .dropdown:hover > a.menu,
-.nj-nav .dropdown.open > a.menu { background: var(--panel-2); color: var(--text); text-decoration: none; }
-.nj-nav .dropdown.active > a.menu { color: var(--accent); background: var(--accent-soft); }
-
+.nj-nav .dropdown.open > a.menu { background: var(--nj-panel-2); color: var(--nj-text); text-decoration: none; }
+.nj-nav .dropdown.active > a.menu { color: var(--nj-accent); background: var(--nj-accent-soft); }
 .nj-nav .dropdown-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 210px;
-  margin: 0;
-  padding: 6px;
-  list-style: none;
-  background: var(--panel);
-  border: var(--hair);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--pop);
+  display: none; position: absolute; top: calc(100% + 6px); left: 0; min-width: 210px;
+  margin: 0; padding: 6px; list-style: none;
+  background: var(--nj-panel); border: var(--nj-hair); border-radius: var(--nj-radius-lg); box-shadow: var(--nj-pop);
 }
 /* The gap between the item and its list, so the pointer does not drop it. */
 .nj-nav .dropdown::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 8px; }
-@media (hover: hover) {
-  .nj-nav .dropdown:hover .dropdown-menu { display: block; }
-}
+@media (hover: hover) { .nj-nav .dropdown:hover .dropdown-menu { display: block; } }
 .nj-nav .dropdown:focus-within .dropdown-menu,
 .nj-nav .dropdown.open .dropdown-menu { display: block; }
 .nj-nav .dropdown-menu a {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  white-space: nowrap;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 7px 12px; border-radius: var(--nj-radius-sm); color: var(--nj-text); white-space: nowrap;
 }
-.nj-nav .dropdown-menu a:hover { background: var(--panel-2); text-decoration: none; }
-.nj-nav .dropdown-menu a.active { color: var(--accent); font-weight: 600; background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
-/* An entry that opens the odi-ui view, until its Nijika page exists. */
-.nj-nav .dropdown-menu a.odi::after { content: "odi-ui"; font-size: 10.5px; font-weight: 600; color: var(--dim); border: var(--hair); border-radius: 999px; padding: 0 6px; line-height: 16px; }
+.nj-nav .dropdown-menu a:hover { background: var(--nj-panel-2); text-decoration: none; }
+.nj-nav .dropdown-menu a.active { color: var(--nj-accent); font-weight: 600; background: var(--nj-accent-soft); box-shadow: inset 2px 0 0 var(--nj-accent); }
+/* Unsaved edits on a page, and in the section above it. */
+.nj-count {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: inline-grid; place-items: center;
+  background: var(--nj-accent); color: var(--nj-on-accent); font-size: 11px; font-weight: 700; line-height: 1;
+}
 
 .nj-end { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .nj-end form { margin: 0; }
-.nj-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: var(--panel);
-  border: var(--hair);
-  border-radius: var(--radius);
-  cursor: pointer;
-  color: var(--dim);
+.nj-icon, .nj-logout {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 36px; background: var(--nj-panel); border: var(--nj-hair); border-radius: var(--nj-radius);
+  color: var(--nj-dim); cursor: pointer; font-weight: 600; white-space: nowrap;
 }
-.nj-icon:hover, .nj-logout:hover { color: var(--text); background: var(--panel-2); }
+.nj-icon { width: 36px; padding: 0; }
+.nj-logout { padding: 0 12px; }
+.nj-icon:hover, .nj-logout:hover { color: var(--nj-text); background: var(--nj-panel-2); border-color: var(--nj-border-2); }
 .nj-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.nj-logout {
-  height: 36px;
-  padding: 0 12px;
-  background: var(--panel);
-  border: var(--hair);
-  border-radius: var(--radius);
-  color: var(--dim);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
+.nj-icon[aria-pressed=true] { color: var(--nj-accent); border-color: var(--nj-accent); }
 .nj-menutoggle, .nj-navlogout { display: none; }
+.authchip { border-color: color-mix(in srgb, var(--nj-warn) 55%, transparent); }
 
 .linepill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 30px;
-  padding: 0 12px;
-  border: var(--hair);
-  border-radius: 999px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px;
+  border: var(--nj-hair); border-radius: 999px; color: var(--nj-text);
+  font-size: 13px; font-weight: 600; white-space: nowrap;
 }
-.linepill:hover { text-decoration: none; background: var(--panel-2); }
-.linepill .num { color: var(--dim); font-weight: 500; font-variant-numeric: tabular-nums; }
-.linepill.ok .dot { background: var(--good); }
-.linepill.bad .dot { background: var(--bad); }
+.linepill:hover { text-decoration: none; background: var(--nj-panel-2); }
+.linepill .num { color: var(--nj-dim); font-weight: 500; font-variant-numeric: tabular-nums; }
+.linepill .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--nj-none); }
+.linepill.ok .dot { background: var(--nj-good); }
+.linepill.warn .dot { background: var(--nj-warn); }
+.linepill.bad .dot { background: var(--nj-bad); }
 
-.dot { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--none); }
-.dot.good { background: var(--good); box-shadow: 0 0 0 3px var(--good-soft); }
-.dot.warn { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
-.dot.bad { background: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); }
+/* The header bars (trial boot, safe mode, chip, a release): full width
+   under the menu, as LuCI shows its notices. */
+.nj-banners .trial { margin: 0; flex-basis: auto; padding: 10px max(var(--nj-pad), calc((100% - var(--nj-max)) / 2 + var(--nj-pad))); }
+.nj-banners .trial + .trial { margin-top: 0; }
+
+.dot { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--nj-none); }
+.dot.good { background: var(--nj-good); box-shadow: 0 0 0 3px var(--nj-good-soft); }
+.dot.warn { background: var(--nj-warn); box-shadow: 0 0 0 3px var(--nj-warn-soft); }
+.dot.bad { background: var(--nj-bad); box-shadow: 0 0 0 3px var(--nj-bad-soft); }
 
 /* --- the page ------------------------------------------------------------ */
 
-.nj-main { flex: 1 0 auto; padding-top: 22px; padding-bottom: 12px; }
+main.nj-main { flex: 1 0 auto; padding-top: 22px; padding-bottom: 32px; }
+body:has(#savebar:not([hidden])) main.nj-main { padding-bottom: 140px; }
 .nj-pagehead { margin: 0 0 16px; }
-.nj-crumb { display: block; color: var(--dim); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.nj-crumb { display: block; color: var(--nj-dim); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 .nj-pagehead h2 { margin: 2px 0 0; font-size: 24px; font-weight: 700; line-height: 1.25; }
+#err, .banner { margin: 0 0 16px; }
+.callout { border-radius: var(--nj-radius); }
 
-.alert-message {
-  margin: 0 0 16px;
-  padding: 10px 14px;
-  border: var(--hair);
-  border-radius: var(--radius);
-  background: var(--panel);
-}
-.alert-message.warning { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
-.alert-message.error { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
-
-.cbi-section {
+/* LuCI cards: every odi-ui block, each settings list, each MIB card. */
+.cbi-section,
+.nj-main .block,
+.nj-main .sub > .settings,
+.nj-main #expert > .settings,
+.nj-main .me-card,
+.nj-main .status-grid,
+.nj-main .overview {
   margin: 0 0 20px;
-  background: var(--panel);
-  border: var(--hair);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+  padding: 16px 18px;
+  background: var(--nj-panel);
+  border: var(--nj-hair);
+  border-radius: var(--nj-radius-lg);
+  box-shadow: var(--nj-shadow);
 }
-.cbi-section > h3 {
-  margin: 0;
-  padding: 13px 18px;
+.cbi-section { padding: 0; overflow: hidden; }
+.nj-main .sub > .settings, .nj-main #expert > .settings { padding-top: 4px; padding-bottom: 4px; }
+.nj-main .settings:empty { display: none; }
+/* The card title: the block's heading, ruled off as LuCI does. */
+.cbi-section > h3,
+.nj-main .block > h2,
+.nj-main .block > .block-head {
+  margin: -16px -18px 14px;
+  padding: 12px 18px;
+  border-bottom: var(--nj-hair);
   font-size: 15px;
   font-weight: 700;
-  border-bottom: var(--hair);
 }
+.cbi-section > h3 { margin: 0; padding: 13px 18px; }
+.nj-main .block > .block-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.nj-main .sub > .block-head { margin: 0 0 14px; }
+.nj-main .block-row { gap: 20px; align-items: stretch; }
+.nj-main .block-row > .block { margin: 0; }
+.nj-main .block-row { margin-bottom: 20px; }
+.nj-main .lede { font-size: 14.5px; color: var(--nj-dim); margin: 0 0 14px; }
+.nj-main .cards { gap: 20px; }
+.nj-main .cards .me-card { margin: 0; }
+.nj-main details.more { margin: 4px 0 16px; }
+.nj-main .status-grid { gap: 24px 36px; }
+.nj-main .status-side .block { margin: 0 0 16px; padding: 0; border: 0; box-shadow: none; background: none; }
+.nj-main .status-side .block > h2 { margin: 0 0 10px; padding: 0; border: 0; }
+.nj-main .mib { border-radius: var(--nj-radius-lg); }
+
 .cbi-section-body { padding: 16px 18px; }
 .cbi-section-body p { margin: 0 0 14px; }
 .cbi-section-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 0;
-  padding: 10px 18px;
-  border-top: var(--hair);
-  background: var(--panel-2);
-  color: var(--dim);
-  font-size: 13px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0;
+  padding: 10px 18px; border-top: var(--nj-hair); background: var(--nj-panel-2);
+  color: var(--nj-dim); font-size: 13px;
 }
-.sep { margin: 0 9px; color: var(--none); }
+.sep { margin: 0 9px; color: var(--nj-none); }
+
+/* Tabs inside a page (GPON > ONT Authentication). */
+.nj-tabs { display: flex; gap: 4px; margin: 0 0 14px; border-bottom: var(--nj-hair); }
+.nj-tabs [role=tab] {
+  background: none; border: 0; border-radius: var(--nj-radius-sm) var(--nj-radius-sm) 0 0;
+  padding: 8px 14px; margin-bottom: -1px; color: var(--nj-dim); font-weight: 600;
+  border-bottom: 2px solid transparent; cursor: pointer;
+}
+.nj-tabs [role=tab]:hover { color: var(--nj-text); }
+.nj-tabs [role=tab][aria-selected=true] { color: var(--nj-accent); border-bottom-color: var(--nj-accent); }
+
+/* One page per menu entry where odi-ui had one subtab for both. */
+body[data-authtab="sn"] #set-line .setting[data-name^="LOID"],
+body[data-authtab="loid"] #set-line .setting:not([data-name^="LOID"]) { display: none; }
+body[data-view="network/lan"] #set-network .setting[data-name="LAN_ROUTES"],
+body[data-view="network/route"] #set-network .setting:not([data-name="LAN_ROUTES"]),
+body[data-view="network/route"] #hostlink { display: none; }
+body[data-view="network/route"] #c-network > .lede:not(.nj-lede-route),
+body[data-view="network/lan"] #c-network > .nj-lede-route { display: none; }
+
+/* What a change costs, as a mark with its words in the tooltip: no mark
+   for a live change, 🔄 a service restart, ⚠️ an interruption of the
+   internet, ⟲ a reboot. The legend above odi-ui's rows is not drawn. */
+#legend { display: none !important; }
+.cost { background: none !important; border: 0 !important; padding: 0 !important; gap: 4px; }
+.cost .bars { display: none !important; }
+.cost.icon-only .cost-text { display: none !important; }
+.cost::before { font-size: 14px; line-height: 1; }
+.cost-restart::before { content: "\1F504"; }
+.cost-internet::before { content: "\26A0\FE0F"; }
+.cost-reboot::before { content: "\27F2"; font-size: 17px; font-weight: 700; color: var(--nj-accent); }
+.cost-live.icon-only { display: none !important; }
+.cost-live:not(.icon-only)::before { content: "\2713"; color: var(--nj-good); font-weight: 700; }
+
+/* The save bar: LuCI's Save & Apply, across the bottom. */
+.savebar { background: var(--nj-panel); border-top: var(--nj-hair); box-shadow: 0 -6px 24px rgba(31, 35, 40, .12); }
+.savebar-in, #saveout { max-width: var(--nj-max); margin: 0 auto; padding-left: var(--nj-pad); padding-right: var(--nj-pad); }
+
+dialog { border: var(--nj-hair); border-radius: var(--nj-radius-lg); box-shadow: var(--nj-pop); background: var(--nj-panel); color: var(--nj-text); }
 
 .btn {
-  display: inline-flex;
-  align-items: center;
-  height: 34px;
-  padding: 0 14px;
-  border: var(--hair);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--text);
-  font-weight: 600;
+  display: inline-flex; align-items: center; height: 34px; padding: 0 14px;
+  border: var(--nj-hair); border-radius: var(--nj-radius); background: var(--nj-panel);
+  color: var(--nj-text); font-weight: 600;
 }
-.btn:hover { text-decoration: none; background: var(--panel-2); }
-.btn.cbi-button-action { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.btn.cbi-button-action:hover { filter: brightness(.92); }
+.btn:hover { text-decoration: none; background: var(--nj-panel-2); }
 
 /* Key/value tables, as LuCI's status pages draw them. */
-table.kv { width: 100%; border-collapse: collapse; }
-table.kv td { padding: 8px 18px; vertical-align: top; overflow-wrap: anywhere; }
-table.kv tr + tr td { border-top: var(--hair); }
-table.kv td.left { width: 40%; color: var(--dim); font-weight: 500; }
-
-.nj-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; align-items: start; }
-.nj-row2 > .cbi-section { margin: 0; }
+table.nj-kv { width: 100%; border-collapse: collapse; }
+table.nj-kv td { padding: 8px 18px; vertical-align: top; overflow-wrap: anywhere; }
+table.nj-kv tr + tr td { border-top: var(--nj-hair); }
+table.nj-kv td.left { width: 40%; color: var(--nj-dim); font-weight: 500; }
+table.nj-kv td:not(.left) { font-family: var(--nj-mono); font-size: 13px; }
 
 /* --- Status > Device ----------------------------------------------------- */
 
+/* SFP and ONT side by side, the same height: the ONT box gives what is left
+   to the VLAN list. */
+.nj-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; align-items: stretch; }
+.nj-row2 > .cbi-section { margin: 0; display: flex; flex-direction: column; }
+.nj-vlans { flex: 1 1 auto; display: flex; flex-direction: column; border-top: var(--nj-hair); padding: 10px 18px 16px; min-height: 120px; }
+.nj-vlans-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--nj-dim); font-weight: 500; margin-bottom: 10px; }
+.nj-vlans-head small { font-size: 12px; }
+.nj-vlans-body { flex: 1 1 auto; }
+ul.vlans { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+ul.vlans li {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 10px;
+  border: var(--nj-hair); border-radius: var(--nj-radius-sm); background: var(--nj-panel-2);
+}
+ul.vlans .vid { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; margin-right: auto; }
+.nj-vlans-body .hint { color: var(--nj-dim); }
+.tag { font-size: 11px; font-weight: 600; line-height: 18px; padding: 0 7px; border-radius: 999px; }
+.tag.pptp { background: var(--nj-accent-soft); color: var(--nj-accent); }
+.tag.veip { background: var(--nj-good-soft); color: var(--nj-good); }
+
 .nj-bar {
-  position: relative;
-  height: 14px;
-  background: var(--panel-2);
-  border: var(--hair);
-  border-radius: 999px;
-  overflow: hidden;
+  position: relative; height: 14px; overflow: hidden;
+  background: var(--nj-panel-2); border: var(--nj-hair); border-radius: 999px;
 }
 .nj-bar.small { height: 6px; max-width: 260px; margin-top: 6px; }
-.nj-bar-fill { height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .5s; }
-.nj-bar-fill.good { background: var(--good); }
-.nj-bar-fill.warn { background: var(--warn); }
-.nj-bar-fill.bad { background: var(--bad); }
-
-ul.vlans { margin: 0; padding: 0; list-style: none; }
-ul.vlans li { display: flex; align-items: center; gap: 6px; font-weight: 600; font-variant-numeric: tabular-nums; }
-ul.vlans li + li { margin-top: 3px; }
-.tag { font-size: 11px; font-weight: 600; line-height: 18px; padding: 0 7px; border-radius: 999px; }
-.tag.pptp { background: var(--accent-soft); color: var(--accent); }
-.tag.veip { background: var(--good-soft); color: var(--good); }
+.nj-bar-fill { height: 100%; width: 0; background: var(--nj-accent); border-radius: 999px; transition: width .5s; }
+.nj-bar-fill.good { background: var(--nj-good); }
+.nj-bar-fill.warn { background: var(--nj-warn); }
+.nj-bar-fill.bad { background: var(--nj-bad); }
 
 .pon-body {
-  display: grid;
-  grid-template-columns: minmax(180px, 250px) 1fr;
-  gap: 28px;
-  align-items: center;
-  padding: 20px 18px;
+  display: grid; grid-template-columns: minmax(220px, 320px) 1fr; gap: 28px; align-items: center;
+  padding: 18px 18px;
 }
-.pon-diagram { width: 100%; height: auto; overflow: visible; }
-.pon-diagram .fibre { fill: none; stroke: var(--none); stroke-width: 4; stroke-linecap: round; }
-.pon-diagram .fibre-head { fill: var(--none); }
-.pon-diagram.flowing .fibre { stroke: var(--good); stroke-dasharray: 10 6; animation: nj-flow .8s linear infinite; }
-.pon-diagram.flowing .fibre-head { fill: var(--good); }
-.pon-diagram.los .fibre { stroke: var(--bad); stroke-dasharray: 4 6; }
-.pon-diagram.los .fibre-head { fill: var(--bad); }
-.pon-diagram .stick { fill: var(--panel-2); stroke: var(--border); stroke-width: 1.5; }
-.pon-diagram .stick-port { fill: var(--bg); stroke: var(--border); stroke-width: 1.5; }
-.pon-diagram .stick-label { fill: var(--dim); font: 700 11px var(--font); letter-spacing: .12em; }
-.pon-diagram .pins rect { fill: var(--gold); }
-@keyframes nj-flow { to { stroke-dashoffset: -16; } }
-@media (prefers-reduced-motion: reduce) { .pon-diagram.flowing .fibre { animation: none; } }
-
 .pon-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 24px; }
 .stat { min-width: 0; }
 .stat:last-child { grid-column: span 2; }
-.stat-label { display: block; color: var(--dim); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.stat-label { display: block; color: var(--nj-dim); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .stat-line { display: flex; align-items: center; gap: 9px; margin-top: 3px; }
 .stat-value { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-value.pre { white-space: pre; }
+.stat-sub { display: block; margin-top: 2px; color: var(--nj-dim); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-value .ds { color: var(--nj-ds); }
+.stat-value .us { color: var(--nj-us); }
+
+/* The stick, cut away: light arriving on the fibre turns down into the
+   photodiode at the WDM filter, the laser answers up the same fibre. The
+   motion is drawn by nj-device.js (the Web Animations API, so a rate
+   change keeps every particle where it is); this is the stick at rest. */
+.nj-stick { width: 100%; height: auto; overflow: visible; }
+.nj-stick .jacket { stroke: color-mix(in srgb, var(--nj-text) 32%, var(--nj-panel)); stroke-width: 7; stroke-linecap: round; }
+.nj-stick .core { stroke: color-mix(in srgb, var(--nj-text) 45%, transparent); stroke-width: 2; }
+.nj-stick .conn { fill: #1f9d6b; stroke: color-mix(in srgb, #1f9d6b 60%, #000); stroke-width: 1; }
+.nj-stick .shell { fill: color-mix(in srgb, var(--nj-text) 9%, var(--nj-panel)); stroke: color-mix(in srgb, var(--nj-text) 28%, var(--nj-panel)); stroke-width: 1.4; }
+.nj-stick .shell-hi { stroke: color-mix(in srgb, var(--nj-text) 14%, transparent); stroke-width: 1.4; stroke-linecap: round; }
+.nj-stick .pcb { fill: color-mix(in srgb, var(--nj-text) 5%, var(--nj-panel)); stroke: color-mix(in srgb, var(--nj-text) 22%, var(--nj-panel)); stroke-width: 1; }
+.nj-stick .filter { stroke: color-mix(in srgb, var(--nj-text) 55%, var(--nj-panel)); stroke-width: 2.4; stroke-linecap: round; }
+.nj-stick .can { fill: color-mix(in srgb, var(--nj-text) 16%, var(--nj-panel)); stroke: color-mix(in srgb, var(--nj-text) 30%, var(--nj-panel)); stroke-width: 1; }
+.nj-stick .pd { fill: var(--nj-panel); stroke: var(--nj-ds); stroke-width: 1.8; }
+.nj-stick .ld { fill: var(--nj-panel); stroke: var(--nj-us); stroke-width: 1.8; }
+.nj-stick .glow-pd { fill: var(--nj-ds); opacity: .4; transform-box: fill-box; transform-origin: center; animation: nj-breathe 1.6s ease-in-out infinite alternate; }
+.nj-stick .glow-ld { fill: var(--nj-us); opacity: .45; transform-box: fill-box; transform-origin: center; animation: nj-flick .45s ease-in-out infinite alternate; }
+.nj-stick .p-ds { fill: var(--nj-ds); }
+.nj-stick .p-us { fill: var(--nj-us); }
+.nj-stick .gold { fill: var(--nj-gold); }
+.nj-stick .lbl { font: 700 10px var(--nj-font); }
+.nj-stick .lbl.ds { fill: var(--nj-ds); }
+.nj-stick .lbl.us { fill: var(--nj-us); }
+.nj-stick .eng { font: 600 9.5px var(--nj-mono); letter-spacing: .04em; fill: color-mix(in srgb, var(--nj-text) 50%, transparent); }
+.nj-stick .arrow { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.nj-stick .arrow.ds { stroke: var(--nj-ds); }
+.nj-stick .arrow.us { stroke: var(--nj-us); }
+.nj-stick.nolight .p-ds, .nj-stick.nolight .glow-pd, .nj-stick.nolight .arrow.ds { display: none; }
+.nj-stick.nolight .pd { stroke: var(--nj-none); }
+.nj-stick.los .core { stroke: var(--nj-bad); stroke-dasharray: 4 4; }
+.nj-stick.laseroff .p-us, .nj-stick.laseroff .glow-ld, .nj-stick.laseroff .arrow.us { display: none; }
+.nj-stick.laseroff .ld { stroke: var(--nj-none); }
+@keyframes nj-breathe { from { transform: scale(.8); } to { transform: scale(1.18); } }
+@keyframes nj-flick { from { opacity: .25; } to { opacity: .9; } }
 
 .nj-shared .nj-bar { margin: 18px 18px 4px; }
-.nj-ticks { position: relative; height: 16px; margin: 0 18px; color: var(--dim); font-size: 11px; }
+.nj-ticks { position: relative; height: 16px; margin: 0 18px; color: var(--nj-dim); font-size: 11px; }
 .nj-ticks span { position: absolute; transform: translateX(-50%); }
 .nj-ticks span:first-child { transform: none; }
 .nj-ticks span:last-child { transform: translateX(-100%); }
-.nj-note { margin: 6px 18px 16px; color: var(--dim); font-size: 13px; }
+.nj-note { margin: 6px 18px 16px; color: var(--nj-dim); font-size: 13px; }
 
 /* --- the footer ---------------------------------------------------------- */
 
-.nj-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  padding-top: 8px;
-  padding-bottom: 28px;
-  color: var(--dim);
-  font-size: 12.5px;
-}
+.nj-footer { padding-top: 8px; padding-bottom: 28px; color: var(--nj-dim); font-size: 12.5px; text-align: center; }
+.nj-footer p { margin: 0 0 2px; }
 
 /* --- narrow screens ------------------------------------------------------ */
 
@@ -409,43 +448,38 @@ ul.vlans li + li { margin-top: 3px; }
 @media (max-width: 860px) {
   .nj-row2 { grid-template-columns: 1fr; }
   .pon-body { grid-template-columns: 1fr; gap: 18px; }
-  .pon-diagram { max-width: 260px; margin: 0 auto; }
+  .nj-stick { max-width: 340px; margin: 0 auto; }
+  .nj-main .block-row { grid-auto-flow: row; }
 }
 @media (max-width: 767px) {
-  :root { --pad: 16px; --bar-h: 56px; }
+  :root { --nj-pad: 16px; --nj-bar-h: 56px; }
   .nj-bar-row { gap: 10px; }
   .nj-menutoggle { display: inline-flex; order: 3; }
   .nj-nav {
-    display: none;
-    position: absolute;
-    top: var(--bar-h);
-    left: 0;
-    right: 0;
-    max-height: calc(100vh - var(--bar-h));
-    overflow: auto;
-    padding: 8px var(--pad) 16px;
-    background: var(--panel);
-    border-bottom: var(--hair);
-    box-shadow: var(--pop);
+    display: none; position: absolute; top: var(--nj-bar-h); left: 0; right: 0;
+    max-height: calc(100vh - var(--nj-bar-h)); overflow: auto; padding: 8px var(--nj-pad) 16px;
+    background: var(--nj-panel); border-bottom: var(--nj-hair); box-shadow: var(--nj-pop);
   }
   body.menu-open .nj-nav { display: block; }
   .nj-nav .nav { flex-direction: column; gap: 4px; }
-  .nj-nav a.menu { padding: 8px 4px 4px; background: none !important; color: var(--dim) !important; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; pointer-events: none; }
-  .nj-nav a.menu::after { display: none; }
-  .nj-nav .dropdown::after { display: none; }
+  .nj-nav a.menu { padding: 8px 4px 4px; background: none !important; color: var(--nj-dim) !important; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; pointer-events: none; }
+  .nj-nav a.menu::after, .nj-nav .dropdown::after { display: none; }
   .nj-nav .dropdown-menu { display: block; position: static; min-width: 0; padding: 0; border: 0; box-shadow: none; background: none; }
   .nj-nav .dropdown-menu a { padding: 9px 12px; }
   .nj-end { gap: 6px; }
-  /* Log out moves into the menu: the bar keeps the line and the theme. */
-  .nj-end .nj-logout { display: none; }
-  .nj-navlogout { display: block; margin: 10px 0 0; padding-top: 12px; border-top: var(--hair); }
+  /* Log out and Setup move into the menu: the bar keeps the line and the theme. */
+  .nj-end .nj-logout, .nj-end .authchip { display: none; }
+  .nj-navlogout { display: block; margin: 10px 0 0; padding-top: 12px; border-top: var(--nj-hair); }
   .nj-navlogout .nj-logout { width: 100%; }
   .linepill .num { display: none; }
   .nj-pagehead h2 { font-size: 21px; }
-  table.kv td { padding: 8px 14px; }
+  table.nj-kv td { padding: 8px 14px; }
   .cbi-section > h3 { padding: 12px 14px; }
+  .nj-main .block, .nj-main .sub > .settings, .nj-main .me-card, .nj-main .status-grid, .nj-main .overview { padding: 14px; }
+  .nj-main .block > h2, .nj-main .block > .block-head { margin: -14px -14px 12px; padding: 11px 14px; }
   .pon-body { padding: 16px 14px; }
   .stat-value { font-size: 17px; }
+  .nj-vlans { padding: 10px 14px 14px; }
 }
 @media (max-width: 400px) {
   .pon-stats { gap: 14px 16px; }
