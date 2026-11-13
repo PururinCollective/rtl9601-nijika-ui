@@ -317,7 +317,7 @@ body[data-view="network/lan"] #c-network > .nj-lede-route { display: none; }
    so odi-ui's own rows of them are not drawn twice on this view. */
 body[data-view="gpon/identity"] #set-identity .setting:is([data-name="OMCI_VENDOR_PRODUCT_CODE"], [data-name="GPON_ONU_MODEL"],
   [data-name="ONU_HW_VERSION"], [data-name="OMCI_SW_VER1"], [data-name="OMCI_SW_VER2"], [data-name="OMCC_VER"]),
-body[data-view="gpon/identity"] #set-expert .setting[data-name="OMCI_UNKNOWN_ME_OK"] { display: none; }
+body[data-view="gpon/identity"] #set-expert .setting:is([data-name="OMCI_UNKNOWN_ME_OK"], [data-name="OMCI_POTS_PORTS"]) { display: none; }
 .nj-subhead { margin: 4px 0 10px; font-size: 15px; font-weight: 700; }
 
 /* A LuCI form: the label on the left, the control and its notes on the right. */
@@ -337,6 +337,33 @@ body[data-view="gpon/identity"] #set-expert .setting[data-name="OMCI_UNKNOWN_ME_
 .nj-form .nj-note.bad { color: var(--nj-bad); }
 .nj-form .nj-note.warn { color: var(--nj-warn); }
 .tag.stock { background: var(--nj-panel-2); color: var(--nj-dim); border: var(--nj-hair); }
+
+/* Show Expert settings off: no Expert settings disclosure (ONT Identity),
+   no GPON > Advanced in the menu, no key names. */
+:root:not([data-expert="on"]) #expert { display: none !important; }
+:root:not([data-expert="on"]) #menu li:has(> a[data-view="gpon/advanced"]),
+:root:not([data-expert="on"]) .s-key { display: none; }
+
+/* GPON > VLAN: the FwdOp table (nj-fwdop.js) edits RTK_DEVINFO_SPECVER, so
+   odi-ui's text row of it is not drawn beside it. */
+body[data-view="gpon/vlan"] #set-vlan .setting[data-name="RTK_DEVINFO_SPECVER"] { display: none; }
+.nj-cardhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nj-cardhead > span { margin-right: auto; }
+.nj-pad { padding: 12px 18px 0; margin: 0; }
+.nj-fwdop-body { padding-bottom: 14px; }
+.nj-fwdop-body > .nj-note, .nj-pad.nj-note { font-size: 13px; color: var(--nj-dim); max-width: 90ch; }
+.nj-fwdop-body > .nj-note.bad { color: var(--nj-bad); }
+button.nj-quick { height: 28px; padding: 0 10px; font-size: 12.5px; font-weight: 600; border-radius: var(--nj-radius-sm); white-space: nowrap; }
+.nj-table-wrap { overflow-x: auto; margin-top: 10px; }
+table.nj-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.nj-table th { text-align: left; color: var(--nj-dim); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 8px 10px; border-bottom: var(--nj-hair); }
+table.nj-table td { padding: 8px 10px; border-bottom: var(--nj-hair); vertical-align: middle; }
+table.nj-table td.mono { font-family: var(--nj-mono); }
+table.nj-table select { font-family: var(--nj-mono); font-size: 12.5px; max-width: 360px; }
+table.nj-table tr.nj-over td:first-child { box-shadow: inset 3px 0 0 var(--nj-accent); }
+table.nj-table tr.nj-stale td { color: var(--nj-dim); }
+.tag.ani { background: var(--nj-panel-2); color: var(--nj-dim); }
+.nj-fwdop-foot code { font-family: var(--nj-mono); font-size: 12px; background: none; padding: 0; margin-left: 4px; overflow-wrap: anywhere; }
 
 /* What a change costs, as a mark with its words in the tooltip: no mark
    for a live change, 🔄 a service restart, ⚠️ an interruption of the

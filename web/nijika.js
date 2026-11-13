@@ -27,7 +27,8 @@ import { renderNetaddr, wireNetaddr } from './netaddr.js';
 import { checkForUpdate, wireUpdates, renderUpdateSwitch } from './updates.js';
 import { wireWizard, wizardSeen, renderSetupEntry } from './wizard.js';
 import { checkAuth, showAuth, savePassword, renderSshKeys, addSshKey, resetConfig } from './nj-account.js';
-import { parseStatus } from './nj-data.js';
+import { parseStatus, ploamHex } from './nj-data.js';
+import { renderFwdop } from './nj-fwdop.js';
 import { renderDevice } from './nj-device.js';
 import { renderIdentity, wireIdentity, resetIdentity } from './nj-identity.js';
 
@@ -51,7 +52,7 @@ const MENU = [
   { id: 'gpon', title: 'GPON', items: [
     { id: 'auth', title: 'ONT Authentication', panel: 'p-config', subs: ['c-line'], config: ['line'] },
     { id: 'identity', title: 'ONT Identity', panel: 'p-config', subs: ['c-identity'], config: ['identity'] },
-    { id: 'vlan', title: 'VLAN', panel: 'p-config', subs: ['c-vlan'], config: ['vlan'] },
+    { id: 'vlan', title: 'VLAN', panel: 'p-config', subs: ['c-vlan'], config: ['vlan'], show: () => renderFwdop() },
     { id: 'advanced', title: 'Advanced', panel: 'p-config', subs: ['c-other', 'c-stock'], config: ['other', 'stock'] },
   ] },
   { id: 'system', title: 'System', items: [
@@ -263,6 +264,48 @@ function wireAuthTabs() {
   pick(tabs[0]);
 }
 
+/*
+ * GPON > ONT Authentication: the serial number and the PLOAM password take
+ * the form the store keeps when the field is left, not while it is typed
+ * in. odi-ui turns a serial typed as 16 hex digits into its letters at every
+ * keystroke: its input handler is held back for these two fields, and its
+ * change handler, which runs when the field is left, does that and records
+ * the edit. A PLOAM password typed as its ten characters is turned into the
+ * twenty hex digits first.
+ */
+const ON_LEAVE = ['f-GPON_SN', 'f-GPON_PLOAM_PASSWD'];
+function wireLineFields() {
+  document.addEventListener('input', (e) => { if (ON_LEAVE.includes(e.target.id)) e.stopPropagation(); }, true);
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.id !== 'f-GPON_PLOAM_PASSWD') return;
+    const text = t.value;
+    const h = ploamHex(text);
+    if (!h) return;
+    t.value = h;
+    const aside = t.parentElement && t.parentElement.querySelector('.s-aside');
+    if (aside) aside.textContent = 'Reads as \u201c' + text + '\u201d';
+  }, true);
+}
+
+/* System > Advanced > Show Expert settings: kept in this browser, on <html>
+   as data-expert (read before first paint, in nijika.html). On, the expert
+   settings are shown, open, GPON > Advanced is in the menu and each row
+   shows its key name; off, nijika.css hides all three. */
+const EXPERT_KEY = 'nijika-expert';
+const expertOn = () => document.documentElement.dataset.expert === 'on';
+function setExpert(on) {
+  if (on) document.documentElement.dataset.expert = 'on'; else delete document.documentElement.dataset.expert;
+  try { localStorage.setItem(EXPERT_KEY, on ? '1' : '0'); } catch (e) { /* not kept */ }
+  $('#nj-expert').value = on ? 'on' : 'off';
+  $('#expert').open = on;
+}
+function wireExpert() {
+  const s = $('#nj-expert');
+  s.value = expertOn() ? 'on' : 'off';
+  s.addEventListener('change', () => setExpert(s.value === 'on'));
+}
+
 /* --- header -------------------------------------------------------------- */
 
 const hostname = () => (ctx.status && ctx.status.hostname) || null;
@@ -332,6 +375,8 @@ function wire() {
   wireUpdates();
   wireAuthTabs();
   wireIdentity();
+  wireLineFields();
+  wireExpert();
   new MutationObserver(markPending).observe($('#p-config .subtabs'), { subtree: true, childList: true, characterData: true });
 }
 
@@ -362,6 +407,7 @@ function wire() {
     renderAll();
     renderIdentitySwitch();
     renderIdentity();
+    if (expertOn()) $('#expert').open = true;
   } catch (e) { fail(e); }
   route();
   await checkAuth(S.FW);

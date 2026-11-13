@@ -112,10 +112,30 @@ eq([hg.PON_VENDOR_ID, hg.GPON_ONU_MODEL, hg.HW_CWMP_PRODUCTCLASS, hg.ONU_HW_VERS
 ['HWTC', 'HG8240H', 'HG8240H', 'BF9.A', 'BF9.A', 'V3R017C10S100', 'V3R017C10S100', '128', '2', '15', '0'],
 'the HG8240H preset writes the keys nijika ont writes');
 eq('HW_SERIAL_NO' in hg, false, 'a preset leaves the device serial number alone');
+eq([hg.OMCI_POTS_PORTS, I.presetValues(PRESETS.find((p) => p.name === 'nijika')).OMCI_POTS_PORTS,
+  I.presetValues(PRESETS.find((p) => p.name === 'sk-g7220')).OMCI_POTS_PORTS], ['2', '0', '1'],
+'a preset sets the phone ports the device has');
 eq('OMCC_VER' in I.presetValues(PRESETS.find((p) => p.name === 'hg8240h5')), false,
   'a preset with no OMCC version keeps the stored one');
 eq(I.fieldProblem(I.FIELDS.find((f) => f.id === 'vendor'), 'AB', null), 'exactly 4 characters', 'vendor id is 4 characters');
 eq(I.fieldProblem(I.FIELDS.find((f) => f.id === 'vendor'), 'HWTC', null), null, 'a 4-character vendor id passes');
+
+// GPON > ONT Authentication: a PLOAM password typed as its ten characters.
+eq(D.ploamHex('1234567890'), '31323334353637383930', 'PLOAM: ten characters become twenty hex digits');
+eq(D.ploamHex('31323334353637383930'), null, 'PLOAM: the hex form stays as it is');
+eq(D.ploamHex('short'), null, 'PLOAM: anything but ten characters stays as it is');
+
+// GPON > VLAN: the FwdOp override, in the format omcid reads.
+const F = await import(join(root, 'web', 'nj-fwdop.js'));
+eq(F.parseOverride('0x1102:0x00,4363 0xe104:2'), { ok: true, entries: [{ inst: 0x1102, code: 0 }, { inst: 4363, code: 2 },
+  { inst: 0xe104, code: 2 }] }, 'override: hex, decimal, no code (0x02), commas and spaces');
+eq(F.parseOverride('0x1102,0x1102:0x00').ok, false, 'override: an entity twice is malformed, as omcid has it');
+eq(F.parseOverride('').entries, [], 'override: empty is none');
+eq(F.formatOverride([{ inst: 0xe104, code: 0x10 }, { inst: 0x1102, code: 2 }]), '0x1102:0x02,0xe104:0x10',
+  'override written by entity id, codes in full');
+const rows = F.filterRows(me84, me47);
+eq(rows.map((r) => [r.inst, r.olt, r.kind, r.vids.join(',')]), [[4, 0x10, 'PPTP+VEIP', '75'], [5, 0x10, 'PPTP+VEIP', '1600']],
+  'VLAN filters as rows: entity, the OLT code, the side, the VIDs');
 
 console.log(failed ? `nijika check: ${failed} of ${n} failed` : `nijika check ok: ${n} checks`);
 process.exit(failed ? 1 : 0);

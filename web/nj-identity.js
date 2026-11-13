@@ -24,6 +24,7 @@ import { PRESETS } from './nj-presets.js';
 const OMCC = [128, 129, 130, 131, 132, 133, 134, 150, 160, 161, 162, 163, 176, 177, 178, 179]
   .map((n) => [String(n), '0x' + n.toString(16).toUpperCase() + ' (' + n + ')']);
 const TM = [['0', '0, priority controlled'], ['1', '1, rate controlled'], ['2', '2, priority and rate controlled']];
+const POTS = [['0', '0, no phone port'], ['1', '1 phone port'], ['2', '2 phone ports']];
 const UNKNOWN = [['0', '0, the standard unknown-entity error'], ['1', '1, answer with success']];
 
 /*
@@ -50,6 +51,9 @@ const FIELDS = [
     note: 'The equipment id the OLT reads in ONU2-G, and the TR-069 product class.' },
   { id: 'product', label: 'Vendor Product Code', key: 'OMCI_VENDOR_PRODUCT_CODE', preset: 'product',
     note: 'ONU2-G vendor product code, decimal.' },
+  { id: 'pots', label: 'POTS Ports', key: 'OMCI_POTS_PORTS', preset: 'pots', options: POTS,
+    note: 'Phone ports reported to the OLT, as the device has them. The stick has no phone socket: '
+      + 'a line the OLT provisions is for the router behind it (Status > Phone).' },
   { id: 'serial', label: 'Device Serial Number', key: 'HW_SERIAL_NO', stock: true,
     note: 'The serial number of the unit, distinct from the ONU serial number (ONT Authentication). '
       + 'For the stock firmware: this image does not report it.' },

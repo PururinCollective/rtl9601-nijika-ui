@@ -40,6 +40,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   confirmation, writes and reads back. The fields this image does not report (Traffic
   Management, Device Serial Number) say so. The odi-ui rows of the same keys are not drawn on
   this view; its other ONU identity rows follow under the card.
+- ONT Identity: POTS Ports, from the preset (the phone ports the emulated device has: 2 for the
+  HG8240H, none for the NIJIKA generic one) or Custom.
+- ONT Authentication: the serial number and the PLOAM password take their stored form when the
+  field is left, not at every keystroke: 16 hex digits become the vendor letters and 8 hex digits
+  (when the vendor part is printable), and a PLOAM password typed as its 10 characters becomes
+  its 20 hex digits.
+- GPON > VLAN: the VLAN forward operation override as a table of the VLAN filters the OLT
+  provisioned (class 84, with the side each serves from class 47): EntityID, Kind, FwdOp as a
+  list of the codes omcid can build, VLAN, and a quick override to 0x02 per filter or for all.
+  It edits `RTK_DEVINFO_SPECVER`, the key omcid reads the override from in both slots, as
+  pending changes (live: the bridges are rebuilt in place); entries for filters the MIB does not
+  have now are listed and can be removed. odi-ui's text row of the key is not drawn there.
+- System > Advanced: Show Expert settings, Off or On, kept in this browser. On shows the expert
+  settings on ONT Identity, open, puts GPON > Advanced in the menu and shows each setting's key
+  name; off, the default, keeps all three out of sight.
 - Schema: `HW_SERIAL_NO` is a `str32` (printable, up to 32 characters), not a MAC: it is the
   serial number of the unit, `NIJK40004000` for one, and has a meta row.
 - `/api/status` also sends `uptime`, `loadavg`, `hostname`, `cpu_model` and `system_type`,

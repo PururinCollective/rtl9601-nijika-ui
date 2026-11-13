@@ -59,6 +59,32 @@ config_subs=config_subs.replace(id_old, id_old+'''      <!-- Nijika: Device Emul
       <h3 class="nj-subhead">More identity settings</h3>
 ''')
 
+vlan_old='''      <div class="settings" id="set-vlan"></div>
+'''
+assert vlan_old in config_subs
+config_subs=config_subs.replace(vlan_old, vlan_old+'''      <!-- Nijika: the VLAN forward operation override as a table (nj-fwdop.js). -->
+      <div id="nj-fwdop"></div>
+''')
+
+svc_old='''      <p class="lede">Where this stick sends its logs, gets its time, and how it treats multicast.</p>
+'''
+assert svc_old in config_subs
+config_subs=config_subs.replace(svc_old, '''      <!-- Nijika: how this page shows itself, kept in this browser (nijika.js). -->
+      <div class="cbi-section">
+        <h3>This page</h3>
+        <div class="nj-form">
+          <div class="nj-field">
+            <label for="nj-expert">Show Expert settings</label>
+            <div>
+              <select id="nj-expert"><option value="off">Off</option><option value="on">On</option></select>
+              <p class="nj-note">On: ONT Identity shows the expert settings, open, GPON &gt; Advanced is in the menu with every key the stick stores, and each setting shows the name of its key. Off keeps all three out of sight. Kept in this browser.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <h3 class="nj-subhead">Services</h3>
+'''+svc_old)
+
 net_old='''      <p class="lede">How you reach this stick from the host side.</p>
 '''
 assert net_old in config_subs
@@ -86,9 +112,10 @@ head='''<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Nijika Luna</title>
-<!-- The theme before first paint, shared with the odi-ui pages (same keys).
+<!-- The theme before first paint, shared with the odi-ui pages (same keys),
+     and the Nijika Show Expert settings switch (System > Advanced).
      Storage may be blocked; then the page follows the browser. -->
-<script>try{var t=localStorage.getItem("odi-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;if(localStorage.getItem("odi-fullhelp")==="1")document.documentElement.dataset.help="full"}catch(e){}</script>
+<script>try{var t=localStorage.getItem("odi-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;if(localStorage.getItem("odi-fullhelp")==="1")document.documentElement.dataset.help="full";if(localStorage.getItem("nijika-expert")==="1")document.documentElement.dataset.expert="on"}catch(e){}</script>
 <!-- odi-ui's sheet first, for the parts its modules draw (meters, settings
      rows, the MIB browser, dialogs); nijika.css then sets the palette and
      the page around them. -->

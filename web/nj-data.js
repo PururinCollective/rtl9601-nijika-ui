@@ -219,6 +219,18 @@ function laneText(mode, sdsStored) {
   return `${MODE_RATE[mode]} / ${SDS_NAMES[n]} (${n})`;
 }
 
+/*
+ * A PLOAM password typed as its ten characters, as an ISP gives it, turned
+ * into the twenty hex digits the store keeps (GPON_PLOAM_PASSWD is hex20:
+ * "1234567890" is 31323334353637383930). Null for anything else, the hex
+ * form itself included: ten characters can only be the text.
+ */
+function ploamHex(v) {
+  const t = String(v || '');
+  if (t.length !== 10 || !/^[\x20-\x7e]{10}$/.test(t)) return null;
+  return [...t].map((c) => c.charCodeAt(0).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
 /* --- the MIB ------------------------------------------------------------- */
 
 /*
@@ -269,7 +281,7 @@ function vlanMap(me47, me84) {
 
 /* --- fetching ------------------------------------------------------------ */
 
-async function omciMe(me) {
+async function readMib(me) {
   try {
     const r = await get('/api/omci?' + new URLSearchParams({ cmd: 'me', me }).toString());
     return { ok: r.ok !== false, ...parseOmci(r.raw || '') };
@@ -281,9 +293,9 @@ async function omciMe(me) {
 /* The OLT vendor and the VLAN map, read once a page asks: three omcicli
    forks, so never on the poll. */
 async function readLine() {
-  const olt = await omciMe('131');
-  const me47 = await omciMe('47');
-  const me84 = await omciMe('84');
+  const olt = await readMib('131');
+  const me47 = await readMib('47');
+  const me84 = await readMib('84');
   const inst = olt.instances[0];
   return {
     olt: inst ? vendorText(attr(inst, 'OltVendorId')) : null,
@@ -294,5 +306,5 @@ async function readLine() {
 
 export {
   sections, parsePorts, parseStatus, portRates, signed, uptimeText, bitrate, kib, macText,
-  serialText, vendorText, laneText, vlanMap, readLine, ponSample, ponLoad, cpuBusy, SDS_NAMES,
+  serialText, vendorText, laneText, vlanMap, readLine, readMib, ponSample, ponLoad, cpuBusy, SDS_NAMES, ploamHex,
 };
