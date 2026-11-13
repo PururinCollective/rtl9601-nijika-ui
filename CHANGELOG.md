@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Nijika UI (rtl9601-nijika-ui): a LuCI-style page at `/`, with a top bar of drop-down menus
+  (Status, Network, GPON, System, the classic Nijika page tree), white cards on a grey canvas,
+  a content column capped at 1180 px, light and dark themes (the odi-ui theme key) and a menu
+  panel on a phone. First page: Status > Device, with the SFP box (host name, model, CPU,
+  platform, firmware and kernel, local time, uptime, load, memory), the ONT box (management
+  address, MAC, host lane in `LAN_SDS_MODE` numbering, serial number, OLT vendor, and the
+  VLANs the OLT allowed with the PPTP or VEIP side they reach, from ME 47 and ME 84), the PON
+  box (state, light in and out against the class B+ windows, temperature, traffic) and the
+  shared PON load. Menu entries without a Nijika page yet open the odi-ui view, which stays
+  whole at `/odi`; its device name links back. Files `nijika.html`, `nijika.css`,
+  `nijika.js`, `nj-data.js`, `nj-device.js`; `scripts/nijika-check.mjs` runs the parsers
+  in `make check`.
+- `/api/status` also sends `uptime`, `loadavg`, `hostname`, `cpu_model` and `system_type`,
+  plain file reads like the other overview members. The preview has them, and ME 47.
+
 ## v1.16.0 (2026-11-12)
 
 - Config: optional static routes for the management interface, under Network, so the stick

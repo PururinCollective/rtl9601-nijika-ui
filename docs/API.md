@@ -200,6 +200,13 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           the last Ranging_Time, or "none"),
                                           `host_link` (odi_switch host_link, "0" or "1") and
                                           `host_mode` (/var/run/host-serdes "running=")
+                                          For the system overview, the same way:
+                                          `uptime` (/proc/uptime), `loadavg`
+                                          (/proc/loadavg), `hostname`
+                                          (/proc/sys/kernel/hostname), and from
+                                          /proc/cpuinfo `cpu_model` ("cpu model") and
+                                          `system_type` ("system type"), each the rest
+                                          of its line after the prefix (": ..." included)
                                           For the shared PON section, from one read of
                                           /proc/odi_gpon/counters (odi-oss), so they belong
                                           to one driver sample: `ds_superframe`

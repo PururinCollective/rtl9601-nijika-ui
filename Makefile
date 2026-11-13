@@ -104,6 +104,7 @@ check:
 	scripts/uimage-test.sh
 	node scripts/crypto-check.mjs
 	node scripts/web-check.mjs
+	node scripts/nijika-check.mjs
 
 # Run the daemon under qemu and talk HTTP to it. No stick needed: it is the
 # request path -- framing, auth, form parsing, validation -- that fails silently

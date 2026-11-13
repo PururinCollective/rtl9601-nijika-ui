@@ -1118,7 +1118,13 @@ void serve_static(int fd, const char *name, const char *ctype)
  * blank.
  */
 const struct web_asset web_assets[] = {
-	{ "/",              "index.html",  "text/html; charset=utf-8" },
+	/* The Nijika UI is the page at /; odi-ui stays whole at /odi. */
+	{ "/",              "nijika.html", "text/html; charset=utf-8" },
+	{ "/nijika.css",    "nijika.css",  "text/css" },
+	{ "/nijika.js",     "nijika.js",   "application/javascript" },
+	{ "/nj-data.js",    "nj-data.js",  "application/javascript" },
+	{ "/nj-device.js",  "nj-device.js", "application/javascript" },
+	{ "/odi",           "index.html",  "text/html; charset=utf-8" },
 	{ "/index.html",    "index.html",  "text/html; charset=utf-8" },
 	{ "/login",         "login.html",  "text/html; charset=utf-8" },
 	{ "/login.js",      "login.js",    "application/javascript" },

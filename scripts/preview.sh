@@ -95,6 +95,7 @@ frame() { printf "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n%s\nXXXXXXXXXXXXXXXXXXXXXXX
 case "$1 $2 $3" in
 "mib get 84")  cat /src/scripts/fixtures/omci/84-VlanTagFilterData.txt ;;
 "mib get 171") cat /src/scripts/fixtures/omci/171-ExtVlanTagOperCfgData.txt ;;
+"mib get 47")  cat /src/scripts/fixtures/omci/47-MacBriPortCfgData-isp1.txt ;;
 "mib get 7")
   frame SWImage
   printf "=================================\nEntityId: 0x0000\nVersion: ODI-260910-6861b53\nIsCommitted: 1\nIsActive: 1\nIsValid: 1\n=================================\n"
@@ -170,6 +171,13 @@ NV
     # /proc/meminfo. /proc/stat is the container own.
     mkdir -p $Q/proc/odi_gpon $Q/sys/module/odi_switch/parameters /var/run
     printf "MemTotal:          27508 kB\nMemFree:            9120 kB\nMemAvailable:      14792 kB\n" > $Q/proc/meminfo
+    # The system facts of the Nijika Device page: uptime, load, host name and
+    # the CPU lines of a stick.
+    mkdir -p $Q/proc/sys/kernel
+    printf "93784.51 90210.33\n" > $Q/proc/uptime
+    printf "0.08 0.12 0.09 1/43 812\n" > $Q/proc/loadavg
+    echo NIJIKA-Luna > $Q/proc/sys/kernel/hostname
+    printf "system type\t\t: Realtek RTL9602C (ODI DFP-34X-2C2)\nmachine\t\t\t: Unknown\nprocessor\t\t: 0\ncpu model\t\t: RLX5281 V0.2\nBogoMIPS\t\t: 297.98\n" > $Q/proc/cpuinfo
     printf "state 5 (O5)\no7_hold keep 0 held 0\nonu_id 13\n" > $Q/proc/odi_gpon/status
     printf "ctr_samples 11\nctr_ds_superframe 305491896\nctr_fec_now ds 1\nctr ds_gem_idle 4843967295\n" > $Q/proc/odi_gpon/counters
     # The counters behind the shared PON section. The file stands still, so

@@ -204,6 +204,13 @@ static void emit_overview(int fd)
 	emit_line(fd, "host_link", HOSTLINK_LINK, "", buf, sizeof(buf));
 	emit_line(fd, "host_mode", SERDES_STATE, "running=", buf, sizeof(buf));
 	emit_pon_load(fd);
+	/* The system facts a LuCI-style overview shows: uptime and load, the
+	 * host name, and the CPU and system type the kernel reports. */
+	emit_line(fd, "uptime", UPTIME_FILE, "", buf, sizeof(buf));
+	emit_line(fd, "loadavg", PROC_LOADAVG, "", buf, sizeof(buf));
+	emit_line(fd, "hostname", PROC_HOSTNAME, "", buf, sizeof(buf));
+	emit_line(fd, "cpu_model", PROC_CPUINFO, "cpu model", buf, sizeof(buf));
+	emit_line(fd, "system_type", PROC_CPUINFO, "system type", buf, sizeof(buf));
 }
 
 /*

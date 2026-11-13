@@ -931,7 +931,7 @@ echo "== web assets"
 # nothing at all in a log.
 for f in web/*.js web/*.css web/*.html; do
 	b=$(basename "$f")
-	u="/$b"; [ "$b" = index.html ] && u="/"; [ "$b" = login.html ] && u="/login"
+	u="/$b"; [ "$b" = nijika.html ] && u="/"; [ "$b" = login.html ] && u="/login"
 	check "serves $b" 200 "$(code -u "$AUTH" "http://127.0.0.1:$PORT$u")"
 done
 check "an unlisted file is refused" 404 \

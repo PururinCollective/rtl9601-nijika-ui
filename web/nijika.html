@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Nijika Luna</title>
+<!-- The theme before first paint, shared with the odi-ui pages (same key).
+     Storage may be blocked; then the page follows the browser. -->
+<script>try{var t=localStorage.getItem("odi-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="/nijika.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+<!--
+  The Nijika UI: a LuCI-style page. The menu is the classic Nijika page tree
+  (nijika.js MENU), the view under it is named by the location hash
+  (#status/device). Entries not built yet open the odi-ui view at /odi.
+-->
+<header class="nj-header">
+  <div class="nj-container nj-bar-row">
+    <a class="nj-brand" href="#status/device">
+      <svg class="nj-logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7 15.5V8.5l10 7V8.5"/></svg>
+      <span id="hostname">NIJIKA-Luna</span>
+    </a>
+    <button id="menutoggle" class="nj-icon nj-menutoggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="nj-nav" aria-label="Main menu">
+      <ul id="menu" class="nav"></ul>
+      <form class="nj-navlogout" method="post" action="/api/logout"><button class="nj-logout" type="submit">Log out</button></form>
+    </nav>
+    <div class="nj-end">
+      <a id="linepill" class="linepill" href="#status/device" hidden></a>
+      <button id="themetoggle" class="nj-icon" type="button" aria-label="Switch to light mode" title="Switch to light mode">
+        <svg id="ico-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg id="ico-moon" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <form method="post" action="/api/logout"><button class="nj-logout" type="submit">Log out</button></form>
+    </div>
+  </div>
+</header>
+
+<main class="nj-container nj-main">
+  <div id="defaultauth" class="alert-message warning" hidden>
+    <strong>No password set.</strong> This page answers to the built-in default credential.
+    <a href="/odi#system/access">Set a password</a>
+  </div>
+  <div id="err" class="alert-message error" role="alert" hidden></div>
+  <div class="nj-pagehead">
+    <span id="crumb" class="nj-crumb"></span>
+    <h2 id="title"></h2>
+  </div>
+  <div id="view"></div>
+</main>
+
+<footer class="nj-container nj-footer">
+  <span>Nijika Luna on ODI OSS</span>
+  <span class="sep">&middot;</span>
+  <span id="build"></span>
+  <span class="sep">&middot;</span>
+  <a href="/odi">odi-ui</a>
+</footer>
+
+<script type="module" src="/nijika.js"></script>
+</body>
+</html>
