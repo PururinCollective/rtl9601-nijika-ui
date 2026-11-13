@@ -137,5 +137,43 @@ const rows = F.filterRows(me84, me47);
 eq(rows.map((r) => [r.inst, r.olt, r.kind, r.vids.join(',')]), [[4, 0x10, 'PPTP+VEIP', '75'], [5, 0x10, 'PPTP+VEIP', '1600']],
   'VLAN filters as rows: entity, the OLT code, the side, the VIDs');
 
+// Status > Service: class 171 rules as lanes, and the map from the MIB.
+const SV = await import(join(root, 'web', 'nj-service.js'));
+const rule = (fo, fi, to, ti) => ({ index: 0, fo, fi, to, ti });
+const lane = (r) => { const l = SV.ruleLane(r); return [l.from, l.action, l.to]; };
+eq(lane(rule({ PRI: 15, VID: 4096 }, { PRI: 15, VID: 4096, EthType: 0 }, { PRI: 15, VID: 0, RemoveTags: 0 }, { PRI: 0, VID: 500 })),
+  ['untagged', '+ tag', 'VLAN 500'], 'rule: untagged, add VLAN 500');
+eq(lane(rule({ PRI: 15, VID: 4096 }, { PRI: 8, VID: 10 }, { PRI: 15, VID: 0, RemoveTags: 1 }, { PRI: 8, VID: 500 })),
+  ['VLAN 10', 'swap', 'VLAN 500'], 'rule: VLAN 10 swapped to 500');
+eq(lane(rule({ PRI: 15 }, { PRI: 8, VID: 500 }, { PRI: 15, RemoveTags: 0 }, { PRI: 15 })),
+  ['VLAN 500', 'as is', 'VLAN 500'], 'rule: VLAN 500 as it is');
+eq(lane(rule({ PRI: 15 }, { PRI: 8, VID: 500 }, { PRI: 15, RemoveTags: 1 }, { PRI: 15 })),
+  ['VLAN 500', '\u2212 tag', 'untagged'], 'rule: VLAN 500 untagged to the OLT');
+eq(lane(rule({ PRI: 15 }, { PRI: 8, VID: 4096 }, { PRI: 15, RemoveTags: 1 }, { PRI: 8, VID: 4096 })),
+  ['any VLAN', 'as is', 'any VLAN'], 'rule: any VLAN re-tagged with its own VID is as it is');
+eq(lane(rule({ PRI: 15 }, { PRI: 15 }, { PRI: 15, RemoveTags: 3 }, { PRI: 15 })), ['untagged', 'drop', null], 'rule: untagged dropped');
+const dflt = SV.ruleLane(rule({ PRI: 15 }, { PRI: 14 }, { PRI: 15, RemoveTags: 3 }, { PRI: 15 }));
+eq([dflt.fallback, dflt.discard], ['single', true], 'rule: the single-tag default that drops');
+eq(SV.ruleLane(rule({ PRI: 15 }, { PRI: 15, EthType: 2 }, { PRI: 15, RemoveTags: 0 }, { PRI: 0, VID: 35 })).eth, 'PPPoE',
+  'rule: an EtherType filter is said');
+const svcMib = { 47: me47, 84: me84, 171: parseOmci(fixture('171-isp1.txt')), 266: parseOmci(fixture('266-GemIwTp-isp1.txt')),
+  268: parseOmci(['268 GemPortCtp 2', '    PortID                   0403', '    TcAdapterPtr             8001', '1 rows', ''].join('\n')),
+  262: parseOmci(['262 Tcont 32769', '    AllocID                  0400', '1 rows', ''].join('\n')) };
+const isp1 = SV.serviceMap(svcMib, { on: false });
+eq(isp1.lanes.map((l) => [l.uni, l.router, l.action, l.olt, !!l.blocked]),
+  [['PPTP 0x0101', 'untagged', '+ tag', 'VLAN 1', true], ['multicast', 'as sent', 'as is', 'multicast', false]],
+  'ISP1: one lane on the UNI, held by the fibre-side filter, and multicast');
+eq(isp1.lanes[0].gems.includes(1027) && isp1.lanes[0].tconts.includes(1024), true, 'ISP1: GEM port and T-CONT through the mapper');
+eq(isp1.fallbacks.includes('VEIP 0x0601: Any other VLAN is dropped.'), true, 'ISP1: the VEIP drops every VLAN');
+const man = SV.serviceMap(svcMib, { on: true, vid: 110 });
+eq(man.lanes.filter((l) => l.kind !== 'MCAST').map((l) => [l.uni, l.router, l.action, l.olt]),
+  [['PPTP 0x0101', 'untagged', '+ tag', 'VLAN 110'], ['VEIP 0x0601', 'untagged', '+ tag', 'VLAN 110']],
+  'manual VLAN: the stick tags 110 on every UNI');
+eq(SV.routerNeeds(man), ['untagged'], 'manual VLAN: the router sends untagged');
+const hgu47 = parseOmci(['47 MacBriPortCfgData 9', '    BridgeIdPtr              0002', '    TPType                   01',
+  '    TPPointer                0102', '1 rows', ''].join('\n'));
+eq(SV.serviceMap({ 47: hgu47 }, { on: false }).lanes.map((l) => [l.uni, l.delivered]), [['PPTP 0x0102', false]],
+  'an HGU LAN port the stick does not have is not delivered');
+
 console.log(failed ? `nijika check: ${failed} of ${n} failed` : `nijika check ok: ${n} checks`);
 process.exit(failed ? 1 : 0);

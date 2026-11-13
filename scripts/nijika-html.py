@@ -59,6 +59,14 @@ config_subs=config_subs.replace(id_old, id_old+'''      <!-- Nijika: Device Emul
       <h3 class="nj-subhead">More identity settings</h3>
 ''')
 
+svcs_old='''      <div id="services-cards" class="cards"></div>
+'''
+assert svcs_old in omci_subs
+omci_subs=omci_subs.replace(svcs_old, '''      <!-- Nijika: the services as lanes, OLT to router (nj-service.js). -->
+      <div id="nj-service"></div>
+      <h3 class="nj-subhead">Table by table</h3>
+'''+svcs_old)
+
 vlan_old='''      <div class="settings" id="set-vlan"></div>
 '''
 assert vlan_old in config_subs

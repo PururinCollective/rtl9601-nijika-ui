@@ -94,8 +94,11 @@ DIAG
 frame() { printf "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n%s\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n" "$1"; }
 case "$1 $2 $3" in
 "mib get 84")  cat /src/scripts/fixtures/omci/84-VlanTagFilterData.txt ;;
-"mib get 171") cat /src/scripts/fixtures/omci/171-ExtVlanTagOperCfgData.txt ;;
+"mib get 171") cat /src/scripts/fixtures/omci/171-isp1.txt ;;
 "mib get 47")  cat /src/scripts/fixtures/omci/47-MacBriPortCfgData-isp1.txt ;;
+"mib get 266") cat /src/scripts/fixtures/omci/266-GemIwTp-isp1.txt ;;
+"mib get 329") cat /src/scripts/fixtures/omci/329-VEIP-isp1.txt ;;
+"mib get 11")  cat /src/scripts/fixtures/omci/11-EthUni-isp1.txt ;;
 "mib get 7")
   frame SWImage
   printf "=================================\nEntityId: 0x0000\nVersion: ODI-260910-6861b53\nIsCommitted: 1\nIsActive: 1\nIsValid: 1\n=================================\n"

@@ -29,6 +29,7 @@ import { wireWizard, wizardSeen, renderSetupEntry } from './wizard.js';
 import { checkAuth, showAuth, savePassword, renderSshKeys, addSshKey, resetConfig } from './nj-account.js';
 import { parseStatus, ploamHex } from './nj-data.js';
 import { renderFwdop } from './nj-fwdop.js';
+import { renderService } from './nj-service.js';
 import { renderDevice } from './nj-device.js';
 import { renderIdentity, wireIdentity, resetIdentity } from './nj-identity.js';
 
@@ -40,7 +41,7 @@ import { renderIdentity, wireIdentity, resetIdentity } from './nj-identity.js';
 const MENU = [
   { id: 'status', title: 'Status', items: [
     { id: 'device', title: 'Device', page: renderDevice },
-    { id: 'service', title: 'Service', panel: 'p-omci', subs: ['o-services'], show: () => renderServices() },
+    { id: 'service', title: 'Service', panel: 'p-omci', subs: ['o-services'], show: () => { renderService(); renderServices(); } },
     { id: 'topology', title: 'OMCI Topology', panel: 'p-omci', subs: ['o-mib'], show: () => renderMeBrowser() },
     { id: 'phone', title: 'Phone', panel: 'p-omci', subs: ['o-phone'], show: () => renderPhone() },
     { id: 'hood', title: 'Under the hood', panel: 'p-status' },
@@ -355,7 +356,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) poll
 function wire() {
   $('#filter').oninput = () => renderAll();
   $('#save').onclick = save;
-  $('#services-reload').onclick = () => renderServices(true);
+  $('#services-reload').onclick = () => { renderService(); renderServices(true); };
   $('#pw-save').onclick = savePassword;
   $('#sshkey-add').onclick = addSshKey;
   $('#reset-go').onclick = resetConfig;

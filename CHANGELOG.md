@@ -40,6 +40,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   confirmation, writes and reads back. The fields this image does not report (Traffic
   Management, Device Serial Number) say so. The odi-ui rows of the same keys are not drawn on
   this view; its other ONU identity rows follow under the card.
+- Status > Service: the services the OLT built, as lanes after the Peter-Pon Connection page,
+  drawn anew from the MIB: first what the router's WAN port needs (the VLANs, or untagged), then
+  the OLT (named by its vendor) on the fibre to this stick on the cable to the router, one lane
+  per service: the OLT's VLAN with its GEM ports and T-CONT, what the stick does with the tag
+  (as is, + tag, swap, − tag, drop), and what the router gets, in a sentence. Read from class 47
+  (the bridges), 266/268/262 (GEM ports and T-CONTs, through the 802.1p mapper), 84 (a rule whose
+  VID the fibre-side filter does not admit is flagged, as omcid does not install it) and 171 (one
+  lane per rule; the default rules as footnotes). With the manual VLAN in force the lanes are
+  what omcid builds then: untagged from the router, the stored VID to the OLT. A LAN port of the
+  HGU layout the stick does not have is "not delivered". odi-ui's cards follow as "Table by
+  table", and one Read again reads both. The preview serves the ISP1 captures of classes 171,
+  266, 329 and 11.
 - ONT Identity: POTS Ports, from the preset (the phone ports the emulated device has: 2 for the
   HG8240H, none for the NIJIKA generic one) or Custom.
 - ONT Authentication: the serial number and the PLOAM password take their stored form when the
