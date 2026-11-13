@@ -1129,6 +1129,7 @@ const struct web_asset web_assets[] = {
 	{ "/nj-presets.js", "nj-presets.js", "application/javascript" },
 	{ "/nj-fwdop.js",   "nj-fwdop.js", "application/javascript" },
 	{ "/nj-service.js", "nj-service.js", "application/javascript" },
+	{ "/nj-topology.js", "nj-topology.js", "application/javascript" },
 	{ "/odi",           "index.html",  "text/html; charset=utf-8" },
 	{ "/index.html",    "index.html",  "text/html; charset=utf-8" },
 	{ "/login",         "login.html",  "text/html; charset=utf-8" },

@@ -59,6 +59,14 @@ config_subs=config_subs.replace(id_old, id_old+'''      <!-- Nijika: Device Emul
       <h3 class="nj-subhead">More identity settings</h3>
 ''')
 
+mib_old='''    <div class="sub" id="o-mib" role="tabpanel" aria-labelledby="st-omci-mib" data-sub="mib" hidden>
+'''
+assert mib_old in omci_subs
+omci_subs=omci_subs.replace(mib_old, mib_old+'''      <!-- Nijika: the MIB as a drawing, fibre to ports (nj-topology.js). -->
+      <div id="nj-topology"></div>
+      <h3 class="nj-subhead">Every managed entity</h3>
+''')
+
 svcs_old='''      <div id="services-cards" class="cards"></div>
 '''
 assert svcs_old in omci_subs

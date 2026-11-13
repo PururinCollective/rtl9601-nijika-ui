@@ -30,6 +30,7 @@ import { checkAuth, showAuth, savePassword, renderSshKeys, addSshKey, resetConfi
 import { parseStatus, ploamHex } from './nj-data.js';
 import { renderFwdop } from './nj-fwdop.js';
 import { renderService } from './nj-service.js';
+import { renderTopology } from './nj-topology.js';
 import { renderDevice } from './nj-device.js';
 import { renderIdentity, wireIdentity, resetIdentity } from './nj-identity.js';
 
@@ -42,7 +43,7 @@ const MENU = [
   { id: 'status', title: 'Status', items: [
     { id: 'device', title: 'Device', page: renderDevice },
     { id: 'service', title: 'Service', panel: 'p-omci', subs: ['o-services'], show: () => { renderService(); renderServices(); } },
-    { id: 'topology', title: 'OMCI Topology', panel: 'p-omci', subs: ['o-mib'], show: () => renderMeBrowser() },
+    { id: 'topology', title: 'OMCI Topology', panel: 'p-omci', subs: ['o-mib'], show: () => { renderTopology(); renderMeBrowser(); } },
     { id: 'phone', title: 'Phone', panel: 'p-omci', subs: ['o-phone'], show: () => renderPhone() },
     { id: 'hood', title: 'Under the hood', panel: 'p-status' },
   ] },

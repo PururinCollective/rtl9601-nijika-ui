@@ -281,10 +281,12 @@ function vlanMap(me47, me84) {
 
 /* --- fetching ------------------------------------------------------------ */
 
-async function readMib(me) {
+/* One class, or one entity of it (hex, as confd takes it). */
+async function readMib(me, entity) {
   try {
-    const r = await get('/api/omci?' + new URLSearchParams({ cmd: 'me', me }).toString());
-    return { ok: r.ok !== false, ...parseOmci(r.raw || '') };
+    const q = entity ? { cmd: 'me', me, entity } : { cmd: 'me', me };
+    const r = await get('/api/omci?' + new URLSearchParams(q).toString());
+    return { ok: r.ok !== false, truncated: !!r.truncated, ...parseOmci(r.raw || '') };
   } catch (e) {
     return { ok: false, error: String(e.message || e), name: '', instances: [] };
   }

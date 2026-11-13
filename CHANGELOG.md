@@ -82,6 +82,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   serial number of the unit, `NIJK40004000` for one, and has a meta row.
 - `/api/status` also sends `uptime`, `loadavg`, `hostname`, `cpu_model` and `system_type`,
   plain file reads like the other overview members. The preview has them, and ME 47.
+- Status > OMCI Topology: what the OLT set up, from the fibre to the ports of this stick, as a
+  drawing after the OMCI Topology page of RemixWrt IIDX (itself after GPON > MIB of Peter-Pon),
+  drawn anew: one column per kind of managed entity (T-CONTs by Alloc-ID, GEM ports, 802.1p
+  mappers, the bridge ports on either side of their MAC bridge, the PPTP UNI and the VEIP), and
+  on a box, as chips, what belongs to it: the queue a GEM port goes up through with its
+  priority, the interworking TPs, the VLANs of a bridge port's filter, a multicast subscriber
+  with its IGMP version, the number of class 171 VLAN rules (each rule in the tooltip). What the
+  OLT creates and what the stick creates have a colour each; what reaches no port to the router
+  (the LAN ports of the HGU layout) is dashed, stored and not used; a pointer to an entity the
+  MIB has not is a red box of its own; the T-CONTs with no Alloc-ID and no GEM port fold into
+  one. Each bridge has a band of rows. A click on a box lights its path from the fibre to the
+  port and dims the rest; drag to move, Ctrl + wheel or the buttons to zoom, the arrow keys move
+  between boxes. The queues are read one by one, only those a GEM port points at, as a real
+  OLT's queue table is larger than the 32 KB confd answers. odi-ui's MIB browser follows as
+  "Every managed entity". `scripts/nijika-check.mjs` checks the model on a small MIB, and the
+  preview answers one entity of a `PREVIEW_OMCI` class when one is asked for.
 
 ## v1.16.0 (2026-11-12)
 

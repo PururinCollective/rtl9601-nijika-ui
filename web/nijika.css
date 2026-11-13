@@ -415,6 +415,63 @@ table.nj-table tr.nj-stale td { color: var(--nj-dim); }
   .nj-lane-head, .nj-ends { display: none; }
 }
 
+/* Status > OMCI Topology: the MIB as a drawing (nj-topology.js). */
+.nj-topo-bar { display: flex; align-items: center; gap: 10px; padding: 12px 18px 0; }
+.nj-topo-status { flex: 1 1 auto; margin: 0; color: var(--nj-dim); font-size: 13px; }
+.nj-topo-view {
+  position: relative; margin: 12px 18px 0; overflow: auto; min-height: 120px; cursor: grab;
+  border: var(--nj-hair); border-radius: var(--nj-radius);
+  background: var(--nj-panel-2);
+  background-image: radial-gradient(color-mix(in srgb, var(--nj-text) 10%, transparent) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.nj-topo-view:active { cursor: grabbing; }
+.nj-topo-sizer { position: relative; }
+.nj-topo-canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.nj-topo-head { position: absolute; top: 9px; color: var(--nj-dim); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.nj-topo-head.mid { transform: translateX(-50%); }
+.nj-topo-lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.nj-topo-line { fill: none; stroke: color-mix(in srgb, var(--nj-accent) 60%, var(--nj-border)); stroke-width: 1.6; }
+.nj-topo-line.off { stroke: var(--nj-border-2); stroke-dasharray: 5 4; }
+.nj-topo-line.ghost { stroke: var(--nj-bad); stroke-dasharray: 3 3; }
+.nj-topo-line.nj-lit { stroke: var(--nj-accent); stroke-width: 2.6; }
+.nj-topo-line.nj-dim { opacity: .2; }
+button.nj-tb {
+  --tb-edge: var(--nj-accent);
+  position: absolute; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 1px;
+  margin: 0; padding: 6px 6px 6px 11px; text-align: left; overflow: hidden; cursor: pointer;
+  background: var(--nj-panel); color: var(--nj-text); font: 12px/1.3 var(--nj-font);
+  border: var(--nj-hair); border-radius: 8px; box-shadow: inset 4px 0 0 var(--tb-edge);
+}
+button.nj-tb:hover { border-color: var(--nj-border-2); }
+button.nj-tb.onu { --tb-edge: color-mix(in srgb, var(--nj-dim) 70%, var(--nj-panel)); }
+button.nj-tb strong { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nj-tb-sub { color: var(--nj-dim); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nj-tb-chip {
+  display: block; margin-top: 3px; padding: 1px 5px; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border: 1px solid color-mix(in srgb, var(--tb-edge) 60%, transparent); border-radius: 5px;
+  background: color-mix(in srgb, var(--tb-edge) 8%, transparent);
+}
+button.nj-tb.off { background: transparent; border-style: dashed; box-shadow: inset 4px 0 0 color-mix(in srgb, var(--tb-edge) 45%, transparent); }
+button.nj-tb.off > * { opacity: .75; }
+button.nj-tb.ghost { border: 1.5px dashed var(--nj-bad); box-shadow: none; background: var(--nj-bad-soft); }
+button.nj-tb.unused { background: transparent; }
+button.nj-tb.bar { padding: 0; align-items: center; justify-content: center; box-shadow: none; border: 1.5px solid var(--nj-accent);
+  background: var(--nj-accent-soft); border-radius: 7px; }
+button.nj-tb.bar.off { border-style: dashed; background: transparent; }
+.nj-tb-bar { writing-mode: vertical-rl; transform: rotate(180deg); font: 600 11.5px var(--nj-mono); white-space: nowrap; }
+button.nj-tb.nj-lit { border-color: var(--nj-accent); outline: 2px solid color-mix(in srgb, var(--nj-accent) 45%, transparent); }
+button.nj-tb.nj-dim { opacity: .3; }
+button.nj-tb:focus-visible { outline: 2px solid var(--nj-accent); outline-offset: 2px; }
+.nj-topo-tools { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 18px 0; }
+.nj-topo-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0; padding: 10px 18px 16px; color: var(--nj-dim); font-size: 12.5px; }
+.nj-key { display: inline-flex; align-items: center; gap: 6px; }
+.nj-key-box { width: 14px; height: 10px; border-radius: 3px; border: 1px solid var(--nj-border-2); }
+.nj-key-box.olt { background: var(--nj-accent); border-color: var(--nj-accent); }
+.nj-key-box.onu { background: color-mix(in srgb, var(--nj-dim) 70%, var(--nj-panel)); }
+.nj-key-box.off { border-style: dashed; background: transparent; }
+.nj-key-box.ghost { border: 1.5px dashed var(--nj-bad); background: transparent; }
+
 /* What a change costs, as a mark with its words in the tooltip: no mark
    for a live change, 🔄 a service restart, ⚠️ an interruption of the
    internet, ⟲ a reboot. The legend above odi-ui's rows is not drawn. */

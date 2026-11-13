@@ -100,8 +100,18 @@ DIAG
     cat > /bin/omcicli <<"OMCICLI"
 #!/bin/sh
 frame() { printf "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n%s\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n" "$1"; }
-# PREVIEW_OMCI: a class the capture has is answered from it.
-if [ "$1 $2" = "mib get" ] && [ -f "/omci/$3.txt" ]; then cat "/omci/$3.txt"; exit 0; fi
+# PREVIEW_OMCI: a class the capture has is answered from it, one entity of it
+# when one is asked for (in the omcid layout, each row opens with a
+# "<class> <Name> <id>" line).
+if [ "$1 $2" = "mib get" ] && [ -f "/omci/$3.txt" ]; then
+  if [ -n "$4" ] && ! head -1 "/omci/$3.txt" | grep -q "^XXX"; then
+    e=$((0x${4#0x}))
+    awk -v c="$3" -v e="$e" "\$1 == c && NF == 3 { on = (\$3 == e); if (on) n++ } on { print } END { printf \"%d rows\\n\", n }" "/omci/$3.txt"
+  else
+    cat "/omci/$3.txt"
+  fi
+  exit 0
+fi
 case "$1 $2 $3" in
 "mib get 84")  cat /src/scripts/fixtures/omci/84-VlanTagFilterData.txt ;;
 "mib get 171") cat /src/scripts/fixtures/omci/171-isp1.txt ;;

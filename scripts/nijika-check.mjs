@@ -194,5 +194,50 @@ eq(two.lanes.map((l) => [l.uni, l.router, l.gems.map((g) => g.gem).join(',')]),
   [['PPTP 0x0101', 'VLAN 500', '263'], ['VEIP 0x0a01', 'VLAN 500', '264']], 'each bridge its own GEM port for VLAN 500');
 eq(two.notes.length, 1, 'a VLAN on both bridges says which one carries it up');
 
+// Status > OMCI Topology: the MIB as columns, the path a box is on, what is not used.
+const T = await import(join(root, 'web', 'nj-topology.js'));
+const odi = (rows) => parseOmci(rows.concat([`${rows.filter((r) => !r.startsWith(' ')).length} rows`, '']).join('\n'));
+const topoMib = {
+  262: odi(['262 Tcont 32768', '    AllocID                  0107', '    Policy                   01',
+    '262 Tcont 32769', '    AllocID                  0108', '    Policy                   01',
+    '262 Tcont 32770', '    AllocID                  00ff', '    Policy                   00']),
+  268: odi(['268 GemPortCtp 263', '    PortID                   0107', '    TcAdapterPtr             8000', '    Direction                03',
+    '    UsTraffMgmtPtr           8000',
+    '268 GemPortCtp 264', '    PortID                   0108', '    TcAdapterPtr             8001', '    Direction                03',
+    '    UsTraffMgmtPtr           8008']),
+  266: odi(['266 GemIwTp 263', '    GemCtpPtr                0107', '    IwOpt                    05', '    ServProPtr               1102',
+    '266 GemIwTp 264', '    GemCtpPtr                0108', '    IwOpt                    05', '    ServProPtr               e102']),
+  130: odi(['130 Map8021pServProf 4354', ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `    IwTpPtrPbit${i}             0107`),
+    '130 Map8021pServProf 57602', ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `    IwTpPtrPbit${i}             0108`)]),
+  45: odi(['45 MacBriServProf 257', '    SpanTreeInd              00', '45 MacBriServProf 3585', '    SpanTreeInd              00',
+    '45 MacBriServProf 258', '    SpanTreeInd              00']),
+  47: odi(['47 MacBriPortCfgData 257', '    BridgeIdPtr              0101', '    TPType                   01', '    TPPointer                0101',
+    '47 MacBriPortCfgData 4354', '    BridgeIdPtr              0101', '    TPType                   03', '    TPPointer                1102',
+    '47 MacBriPortCfgData 3585', '    BridgeIdPtr              0e01', '    TPType                   0b', '    TPPointer                0a01',
+    '47 MacBriPortCfgData 57602', '    BridgeIdPtr              0e01', '    TPType                   03', '    TPPointer                e102',
+    '47 MacBriPortCfgData 258', '    BridgeIdPtr              0102', '    TPType                   01', '    TPPointer                0102',
+    '47 MacBriPortCfgData 4610', '    BridgeIdPtr              0102', '    TPType                   03', '    TPPointer                1202']),
+  11: odi(['11 EthUni 257', '    AdminState               00', '11 EthUni 258', '    AdminState               00']),
+  329: odi(['329 VEIP 2561', '    AdminState               00']),
+  84: parseOmci(['=================================', 'EntityID: 0xe102', 'FilterTbl[0]: PRI 0,CFI 0, VID 500', 'FwdOp:  0x10',
+    'NumOfEntries: 1', '=================================', ''].join('\n')),
+};
+const topo = T.topology(topoMib, new Map([[0x8008, { pri: 7 }]]));
+const nd = (id) => topo.nodes.get(id);
+eq([nd('262/32768').title, nd('262/32769').title, nd('unused').title], ['Alloc-ID 263', 'Alloc-ID 264', '1 unused'],
+  'topology: T-CONTs by Alloc-ID, the unset one folded');
+eq(nd('262/32769').chips.map((c) => c.text), ['queue 0x8008 · prio 7'], 'topology: the queue a GEM port goes up through');
+eq([nd('130/57602').sub, nd('47/57602').chips[0].text], ['p-bits 0\u20137 \u2192 GEM 264', 'VLAN 500'],
+  'topology: a mapper names its GEM port, a bridge port its VLANs');
+eq([...T.trace(topo, '268/264')].sort(), ['130/57602', '262/32769', '268/264', '329/2561', '45/3585', '47/3585', '47/57602', 'fibre'],
+  'topology: the path of GEM 264, fibre to VEIP');
+eq([nd('11/257').off, nd('329/2561').off, nd('11/258').off, nd('45/258').off], [false, false, true, true],
+  'topology: the PPTP 0x0101 and the VEIP are used, an HGU LAN port is not');
+eq(nd('ghost:130/4610').ghost, true, 'topology: a pointer to a mapper the MIB has not is a box of its own');
+const lay = T.layout(topo, 1200);
+eq(Object.keys(lay.pos).length, topo.nodes.size, 'topology: every box has a place');
+eq(lay.pos['47/57602'].y >= lay.pos['45/3585'].y && lay.pos['47/57602'].y <= lay.pos['45/3585'].y + lay.pos['45/3585'].h, true,
+  'topology: a bridge port sits in the band of its bridge');
+
 console.log(failed ? `nijika check: ${failed} of ${n} failed` : `nijika check ok: ${n} checks`);
 process.exit(failed ? 1 : 0);
