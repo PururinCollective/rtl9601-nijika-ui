@@ -29,6 +29,7 @@ import { wireWizard, wizardSeen, renderSetupEntry } from './wizard.js';
 import { checkAuth, showAuth, savePassword, renderSshKeys, addSshKey, resetConfig } from './nj-account.js';
 import { parseStatus } from './nj-data.js';
 import { renderDevice } from './nj-device.js';
+import { renderIdentity, wireIdentity, resetIdentity } from './nj-identity.js';
 
 /*
  * The page tree. A view names the odi-ui panel and subs it shows (`subs`),
@@ -317,7 +318,9 @@ function wire() {
   $('#reset-go').onclick = resetConfig;
   $('#l2-load').onclick = renderL2;
   $('#gopassword').onclick = () => { go('system/management'); $('#pw-pass').focus(); };
-  $('#discard').onclick = () => { EDITS.clear(); renderAll(); refreshSaveBar(); $('#saveout').textContent = ''; };
+  $('#discard').onclick = () => {
+    EDITS.clear(); renderAll(); refreshSaveBar(); $('#saveout').textContent = ''; resetIdentity();
+  };
   wireRestore();
   wirePhone();
   wireTheme();
@@ -328,6 +331,7 @@ function wire() {
   wireWizard();
   wireUpdates();
   wireAuthTabs();
+  wireIdentity();
   new MutationObserver(markPending).observe($('#p-config .subtabs'), { subtree: true, childList: true, characterData: true });
 }
 
@@ -357,6 +361,7 @@ function wire() {
     $('#build').textContent = S.FW.confd || '';
     renderAll();
     renderIdentitySwitch();
+    renderIdentity();
   } catch (e) { fail(e); }
   route();
   await checkAuth(S.FW);

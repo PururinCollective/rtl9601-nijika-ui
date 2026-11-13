@@ -174,7 +174,7 @@ DWORD	hs	DWORD	other	int	unknown	yes	no
 INT1	hs	INT1	other	int	unknown	yes	no
 INT2	hs	INT2	other	string	unknown	yes	no
 WIFI_SUPPORT	hs	WIFI_SUPPORT	other	int	unknown	yes	no
-HW_SERIAL_NO	hs	HW_SERIAL_NO	hardware	mac	unknown	yes	no
+HW_SERIAL_NO	hs	HW_SERIAL_NO	hardware	str32	unknown	yes	no
 HW_FON_KEYWORD	hs	HW_FON_KEYWORD	hardware	string	unknown	yes	no
 HW_WLAN0_11N_XCAP	hs	HW_WLAN0_11N_XCAP	hardware	int	unknown	yes	no
 HW_WLAN0_11N_XCAP_2	hs	HW_WLAN0_11N_XCAP_2	hardware	int	unknown	yes	no

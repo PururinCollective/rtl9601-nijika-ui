@@ -313,6 +313,31 @@ body[data-view="network/route"] #hostlink { display: none; }
 body[data-view="network/route"] #c-network > .lede:not(.nj-lede-route),
 body[data-view="network/lan"] #c-network > .nj-lede-route { display: none; }
 
+/* GPON > ONT Identity: the Nijika card (nj-identity.js) shows these keys,
+   so odi-ui's own rows of them are not drawn twice on this view. */
+body[data-view="gpon/identity"] #set-identity .setting:is([data-name="OMCI_VENDOR_PRODUCT_CODE"], [data-name="GPON_ONU_MODEL"],
+  [data-name="ONU_HW_VERSION"], [data-name="OMCI_SW_VER1"], [data-name="OMCI_SW_VER2"], [data-name="OMCC_VER"]),
+body[data-view="gpon/identity"] #set-expert .setting[data-name="OMCI_UNKNOWN_ME_OK"] { display: none; }
+.nj-subhead { margin: 4px 0 10px; font-size: 15px; font-weight: 700; }
+
+/* A LuCI form: the label on the left, the control and its notes on the right. */
+.nj-form { padding: 4px 18px 8px; }
+.nj-field { display: grid; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); gap: 4px 24px; padding: 12px 0; border-top: var(--nj-hair); }
+.nj-field:first-child { border-top: 0; }
+.nj-field > label { font-weight: 600; padding-top: 7px; }
+.nj-field.nj-pending > label::after { content: " \2022"; color: var(--nj-accent); }
+.nj-field-main { padding: 14px 0 16px; }
+.nj-field-main select { font-weight: 600; }
+.nj-fieldline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nj-form input, .nj-form select { width: 100%; max-width: 380px; font-family: var(--nj-mono); font-size: 13.5px; }
+.nj-field-main select { font-family: var(--nj-font); font-size: 14px; }
+.nj-form input[readonly], .nj-form select:disabled { background: var(--nj-panel-2); color: var(--nj-dim); opacity: 1; cursor: default; }
+.nj-form .nj-note { margin: 4px 0 0; font-size: 12.5px; color: var(--nj-dim); max-width: 70ch; }
+.nj-form .nj-note:empty { display: none; }
+.nj-form .nj-note.bad { color: var(--nj-bad); }
+.nj-form .nj-note.warn { color: var(--nj-warn); }
+.tag.stock { background: var(--nj-panel-2); color: var(--nj-dim); border: var(--nj-hair); }
+
 /* What a change costs, as a mark with its words in the tooltip: no mark
    for a live change, 🔄 a service restart, ⚠️ an interruption of the
    internet, ⟲ a reboot. The legend above odi-ui's rows is not drawn. */
@@ -480,6 +505,9 @@ ul.vlans .vid { font-size: 17px; font-weight: 700; font-variant-numeric: tabular
   .pon-body { padding: 16px 14px; }
   .stat-value { font-size: 17px; }
   .nj-vlans { padding: 10px 14px 14px; }
+  .nj-form { padding: 4px 14px 8px; }
+  .nj-field { grid-template-columns: minmax(0, 1fr); }
+  .nj-field > label { padding-top: 0; }
 }
 @media (max-width: 400px) {
   .pon-stats { gap: 14px 16px; }

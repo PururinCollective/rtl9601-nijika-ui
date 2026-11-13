@@ -51,6 +51,14 @@ config_subs=config_subs.replace(line_old, line_old+'''      <!-- Nijika: the two
       </div>
 ''')
 
+id_old='''      <div id="identity-out"></div>
+'''
+assert id_old in config_subs
+config_subs=config_subs.replace(id_old, id_old+'''      <!-- Nijika: Device Emulation and the identity fields (nj-identity.js). -->
+      <div id="nj-identity"></div>
+      <h3 class="nj-subhead">More identity settings</h3>
+''')
+
 net_old='''      <p class="lede">How you reach this stick from the host side.</p>
 '''
 assert net_old in config_subs

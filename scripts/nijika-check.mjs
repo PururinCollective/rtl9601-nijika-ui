@@ -96,5 +96,26 @@ eq(D.vlanMap(odi47, odi84), [{ vid: 209, kinds: ['PPTP', 'VEIP'] }, { vid: 500, 
   'VLANs per bridge, odi-oss dump, VID 4096 is not a VLAN');
 eq(D.vlanMap({ instances: [] }, me84), [], 'no bridge ports, no VLANs');
 
+// GPON > ONT Identity: the presets and what picking one writes.
+const I = await import(join(root, 'web', 'nj-identity.js'));
+const { PRESETS } = await import(join(root, 'web', 'nj-presets.js'));
+const labels = PRESETS.map((p) => p.label);
+eq(labels, [...labels].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())), 'presets listed by label');
+eq(PRESETS.filter((p) => p.default).map((p) => p.name), ['hg8240h'], 'one default preset, the HG8240H');
+eq(I.presetOf({ PON_VENDOR_ID: 'HWTC', GPON_ONU_MODEL: 'HG8240H', ONU_HW_VERSION: 'BF9.A' }).name, 'hg8240h',
+  'stored values read as their preset');
+eq(I.presetOf({ PON_VENDOR_ID: 'HWTC', GPON_ONU_MODEL: 'HG8240H', ONU_HW_VERSION: 'BF9.B' }), null,
+  'another hardware version is Custom');
+const hg = I.presetValues(PRESETS.find((p) => p.name === 'hg8240h'));
+eq([hg.PON_VENDOR_ID, hg.GPON_ONU_MODEL, hg.HW_CWMP_PRODUCTCLASS, hg.ONU_HW_VERSION, hg.HW_HWVER, hg.OMCI_SW_VER1,
+  hg.OMCI_SW_VER2, hg.OMCC_VER, hg.OMCI_TM_OPT, hg.OMCI_VENDOR_PRODUCT_CODE, hg.OMCI_UNKNOWN_ME_OK],
+['HWTC', 'HG8240H', 'HG8240H', 'BF9.A', 'BF9.A', 'V3R017C10S100', 'V3R017C10S100', '128', '2', '15', '0'],
+'the HG8240H preset writes the keys nijika ont writes');
+eq('HW_SERIAL_NO' in hg, false, 'a preset leaves the device serial number alone');
+eq('OMCC_VER' in I.presetValues(PRESETS.find((p) => p.name === 'hg8240h5')), false,
+  'a preset with no OMCC version keeps the stored one');
+eq(I.fieldProblem(I.FIELDS.find((f) => f.id === 'vendor'), 'AB', null), 'exactly 4 characters', 'vendor id is 4 characters');
+eq(I.fieldProblem(I.FIELDS.find((f) => f.id === 'vendor'), 'HWTC', null), null, 'a 4-character vendor id passes');
+
 console.log(failed ? `nijika check: ${failed} of ${n} failed` : `nijika check ok: ${n} checks`);
 process.exit(failed ? 1 : 0);

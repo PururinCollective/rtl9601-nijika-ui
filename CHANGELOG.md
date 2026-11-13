@@ -30,6 +30,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   laser pulsing out at the speed of the traffic; and the shared PON load. The footer credits
   the Open PON Foundation and Peter-Pon by Pedro Teixeira. `scripts/nijika-check.mjs` runs the
   parsers in `make check`.
+- GPON > ONT Identity: a Device Emulation list of the Nijika Luna presets (`nj-presets.js`,
+  generated in rtl9601-nijika-luna from `presets/ont.tsv`, the list `nijika ont` applies), and
+  the fields of the classic Nijika page: Vendor Id, Software Version 1 and 2, HW Version, OMCC
+  Version, Traffic Management, Product Class, Vendor Product Code, Device Serial Number and
+  `OMCI_UNKNOWN_ME_OK`. A preset fills them read-only and writes the keys the CLI writes; Custom
+  makes every field editable, from the values in place. Nothing is written from the card itself:
+  a choice becomes pending changes, so the save bar shows the cost, asks for the identity
+  confirmation, writes and reads back. The fields this image does not report (Traffic
+  Management, Device Serial Number) say so. The odi-ui rows of the same keys are not drawn on
+  this view; its other ONU identity rows follow under the card.
+- Schema: `HW_SERIAL_NO` is a `str32` (printable, up to 32 characters), not a MAC: it is the
+  serial number of the unit, `NIJK40004000` for one, and has a meta row.
 - `/api/status` also sends `uptime`, `loadavg`, `hostname`, `cpu_model` and `system_type`,
   plain file reads like the other overview members. The preview has them, and ME 47.
 
