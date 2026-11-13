@@ -98,6 +98,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   OLT's queue table is larger than the 32 KB confd answers. odi-ui's MIB browser follows as
   "Every managed entity". `scripts/nijika-check.mjs` checks the model on a small MIB, and the
   preview answers one entity of a `PREVIEW_OMCI` class when one is asked for.
+- Sign-in page: the Nijika one at `/login` (`nj-login.html`), in the LuCI look: the stick's
+  name, Authorization Required, username and password, Log in; under it the footer
+  "Open PON Foundation · NIJIKA Luna × ODI OSS × Peter-Pon · version", the UX inspiration
+  (Peter-Pon by Pedro Teixeira, metal-stress) and the contributors. odi-ui's own page is at
+  `/odi/login`. Before a sign-in confd also serves `nijika.css` and `GET /api/version`: the
+  image (the first word of `/etc/version`) and the build of confd, as a LuCI sign-in page
+  names its version.
+- The footer after a sign-in is one line: Open PON Foundation · NIJIKA Luna × ODI OSS ×
+  Peter-Pon · the image version (the confd build without one, and in its tooltip).
+- Status > Device, PON box: Light in has a bar, the class B+ window in green with its outer
+  16 % in yellow and red outside it, a needle at the reading and the edges marked under it.
+  The photodiode and the laser are drawn as flashes, lit as each dot of light arrives and
+  each dash leaves, in step with the particles at any traffic speed.
+- Menu: choosing an entry closes its drop-down list; the pointer over it or the focus on the
+  chosen link kept it open.
+- Cards: the first card of a page keeps its top border (System > Management, Backup & Reset,
+  Logs); a settings card whose first rows the view hides (the LOID tab, Network > Route) no
+  longer shows a rule along its top. GPON > ONT Identity: odi-ui's other identity rows are the
+  card "Extended ONT Identity".
+- `scripts/preview.sh`: stand-ins for `host-serdes.sh` and `host-autoneg.sh`, so Network > LAN
+  shows the Host port card (Link mode, auto-negotiation) as on a stick, where the image has
+  both scripts.
 
 ## v1.16.0 (2026-11-12)
 

@@ -110,6 +110,13 @@ function watchSession() {
 
 const isNarrow = () => matchMedia('(max-width: 767px)').matches;
 
+/* A drop-down list stays open while the pointer is over it or a link in it
+   has the focus: a choice closes it, as a LuCI page does by loading anew. */
+function shut(li, a) {
+  li.classList.add('nj-shut');
+  a.blur();
+}
+
 function renderMenu() {
   const nav = $('#menu');
   nav.textContent = '';
@@ -122,7 +129,7 @@ function renderMenu() {
     top.setAttribute('aria-haspopup', 'true');
     /* A touch screen has no hover: the first tap opens the list. */
     top.addEventListener('click', (e) => {
-      if (matchMedia('(hover: hover)').matches && !isNarrow()) return;
+      if (matchMedia('(hover: hover)').matches && !isNarrow()) { shut(li, top); return; }
       e.preventDefault();
       const open = !li.classList.contains('open');
       for (const o of nav.querySelectorAll('li.open')) o.classList.remove('open');
@@ -134,11 +141,15 @@ function renderMenu() {
       a.append(el('span', null, it.title));
       a.href = '#' + sec.id + '/' + it.id;
       a.dataset.view = sec.id + '/' + it.id;
+      a.addEventListener('click', () => { if (matchMedia('(hover: hover)').matches && !isNarrow()) shut(li, a); });
       const item = el('li');
       item.append(a);
       ul.append(item);
     }
     li.append(top, ul);
+    /* Shut by a choice: open again once the pointer has left, or by the keyboard. */
+    li.addEventListener('mouseleave', () => li.classList.remove('nj-shut'));
+    li.addEventListener('keydown', () => li.classList.remove('nj-shut'));
     nav.append(li);
   }
 }
@@ -405,7 +416,9 @@ function wire() {
     for (const f of st.features) (S.FEATURES[f.mask] ||= []).push(f);
     ctx.init = init;
     if (ntp && Number.isFinite(ntp.now)) ctx.clock = { now: ntp.now, at: Date.now(), ntp: ntp.ntp };
-    $('#build').textContent = S.FW.confd || '';
+    /* The image this is (the first word of /etc/version), else the build of confd. */
+    $('#build').textContent = (S.FW.build && S.FW.build.image) || S.FW.running || S.FW.confd || '';
+    if (S.FW.confd) $('#build').title = 'confd ' + S.FW.confd;
     renderAll();
     renderIdentitySwitch();
     renderIdentity();

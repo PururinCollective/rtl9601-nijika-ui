@@ -751,13 +751,36 @@ static int serve_public(int conn, unsigned long body_have, unsigned long body_wa
 		return 0;
 
 	if (spre(req, "GET ") &&
-	    (seq(target, "/login") || seq(target, "/login.js") || seq(target, "/style.css"))) {
+	    (seq(target, "/login") || seq(target, "/login.js") || seq(target, "/style.css") ||
+	     seq(target, "/nijika.css"))) {
 		/* Signed in already: nothing to do there. */
 		if (seq(target, "/login") && authorised(req) == AUTH_SESSION) {
 			respond(conn, "303 See Other", "text/plain", "Location: /\r\n");
 			return 1;
 		}
 		return serve_asset(conn, target);
+	}
+
+	/*
+	 * Nijika Luna: the version the sign-in page names in its footer, as a
+	 * LuCI sign-in page does: the image (the first word of /etc/version)
+	 * and the build of confd. Nothing else of the stick.
+	 */
+	if (spre(req, "GET ") && seq(target, "/api/version")) {
+		char ver[128];
+		unsigned long n = 0;
+
+		if (read_file("/etc/version", ver, sizeof(ver)) <= 0)
+			ver[0] = 0;
+		while (ver[n] && ver[n] != '\n' && ver[n] != ' ')
+			n++;
+		respond(conn, "200 OK", "application/json", 0);
+		put_fd(conn, "{\"image\":\"");
+		put_json_str(conn, ver, n);
+		put_fd(conn, "\",\"confd\":\"");
+		put_json_cstr(conn, BUILD_ID);
+		put_fd(conn, "\"}");
+		return 1;
 	}
 
 	/*

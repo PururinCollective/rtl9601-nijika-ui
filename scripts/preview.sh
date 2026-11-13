@@ -209,6 +209,29 @@ NV
     # the section shows "measuring".
     echo 1 > $Q/sys/module/odi_switch/parameters/host_link
     printf "setting=2500basex\nrunning=2500basex\nphase=steady\n" > /var/run/host-serdes
+    printf "setting=on\nrunning=on\nphase=steady\n" > /var/run/host-autoneg
+    # The host port scripts of the image, as stand-ins, so Network > LAN shows
+    # the link mode and auto-negotiation card as on a stick. A trial waits for
+    # Keep or Revert (its clock stands still, as the preview uptime does);
+    # nothing reaches a port.
+    for n in host-serdes host-autoneg; do
+      cat > /etc/scripts/$n.sh <<"HOSTPORT"
+#!/bin/sh
+S=/var/run/${0##*/}; S=${S%.sh}
+setting=$(sed -n "s/^setting=//p" $S); running=$(sed -n "s/^running=//p" $S)
+put() { printf "setting=%s\nrunning=%s\nphase=%s\n%s" "$1" "$2" "$3" "$4" > $S; }
+case "$1" in
+status)  cat $S; echo link=1; echo link_source=serdes_sync; echo autoneg=off ;;
+try)     put "$setting" "$2" trial "trial_mode=$2
+trial_deadline=93904
+"; echo "trial of $2" ;;
+confirm) put "$running" "$running" steady ;;
+revert)  put "$setting" "$setting" steady ;;
+esac
+exit 0
+HOSTPORT
+      chmod +x /etc/scripts/$n.sh
+    done
     uimage "Linux Kernel Image 6.18" 68d8a6f0 > $Q/dev/mtd4
     uimage "Linux Kernel Image" 632d9a47 > $Q/dev/mtd6
     exec qemu-mips-static -L $Q build/confd 18080'

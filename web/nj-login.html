@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Sign in · NIJIKA-Luna</title>
+<!-- The theme the Nijika pages keep, before first paint. -->
+<script>try{var t=localStorage.getItem("odi-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/nijika.css">
+<link rel="icon" href="data:,">
+</head>
+<body class="nj-signin-page">
+<!--
+  The Nijika sign-in page, the one page confd serves at /login before a
+  sign-in, with style.css, nijika.css and odi-ui's login.js, which posts the
+  form to /api/login. The footer names the version /api/version gives.
+-->
+<main class="nj-signin">
+  <p class="nj-signin-host">NIJIKA-Luna</p>
+  <h1>Authorization Required</h1>
+  <p class="nj-signin-lede">Please enter your username and password.</p>
+  <p id="signin-msg" role="status"></p>
+  <form id="signin" method="post" action="/api/login" novalidate>
+    <label for="user">Username</label>
+    <input id="user" name="user" autocomplete="username" autocapitalize="none" spellcheck="false"
+           required maxlength="64" value="admin">
+    <label for="pass">Password</label>
+    <input id="pass" name="password" type="password" autocomplete="current-password"
+           required maxlength="128" autofocus>
+    <button id="signin-go" class="primary" type="submit">Log in</button>
+  </form>
+</main>
+<footer class="nj-footer nj-signin-foot">
+  <p>Open PON Foundation <span class="sep">&middot;</span> NIJIKA Luna &times; ODI OSS &times; Peter-Pon <span class="sep">&middot;</span> <span id="nj-version"></span></p>
+  <p>UX inspiration from Peter-Pon by Pedro Teixeira (metal-stress)</p>
+  <p>AndreZiviani, Anime4000, CATCrypt, metal-stress, rajkosto, stich86</p>
+</footer>
+<script type="module" src="/login.js"></script>
+<script>
+fetch('/api/version', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (v) {
+  var e = document.getElementById('nj-version');
+  e.textContent = v.image || v.confd || '';
+  if (v.confd) e.title = 'confd ' + v.confd;
+}).catch(function () {});
+</script>
+</body>
+</html>

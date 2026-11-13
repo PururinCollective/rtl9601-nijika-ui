@@ -521,7 +521,12 @@ check "a request with no credential is not delayed" yes "$(awk -v t="$t" 'BEGIN 
 check "the sign-in page needs no credential" 200 "$(code "$L/login")"
 check "  nor its script" 200 "$(code "$L/login.js")"
 check "  nor the stylesheet" 200 "$(code "$L/style.css")"
+check "  nor the Nijika stylesheet" 200 "$(code "$L/nijika.css")"
+check "  and it is the Nijika one" yes "$(err "$(curl -s "$L/login")" 'Authorization Required')"
 check "  and keeps its query" 200 "$(code "$L/login?out=1")"
+check "the version needs no credential" 200 "$(code "$L/api/version")"
+check "  and names the build of confd" yes "$(err "$(curl -s "$L/api/version")" '"confd":"')"
+check "  and nothing else" '{}' "$(curl -s "$L/api/version" | sed 's/"image":"[^"]*","confd":"[^"]*"//')"
 check "nothing else is served without one" 401 "$(code "$L/app.js")"
 tok_of() { printf '%s' "$1" | sed -n 's/^Set-Cookie: odi_session=\([0-9a-f]\{32\}\);.*/\1/p'; }
 li() { curl -s -D - -o /tmp/login.body -X POST -H "Origin: $L" --data "$1" "$L/api/login"; }
@@ -931,7 +936,8 @@ echo "== web assets"
 # nothing at all in a log.
 for f in web/*.js web/*.css web/*.html; do
 	b=$(basename "$f")
-	u="/$b"; [ "$b" = nijika.html ] && u="/"; [ "$b" = login.html ] && u="/login"
+	u="/$b"; [ "$b" = nijika.html ] && u="/"; [ "$b" = nj-login.html ] && u="/login"
+	[ "$b" = login.html ] && u="/odi/login"
 	check "serves $b" 200 "$(code -u "$AUTH" "http://127.0.0.1:$PORT$u")"
 done
 check "an unlisted file is refused" 404 \

@@ -1132,7 +1132,9 @@ const struct web_asset web_assets[] = {
 	{ "/nj-topology.js", "nj-topology.js", "application/javascript" },
 	{ "/odi",           "index.html",  "text/html; charset=utf-8" },
 	{ "/index.html",    "index.html",  "text/html; charset=utf-8" },
-	{ "/login",         "login.html",  "text/html; charset=utf-8" },
+	/* The Nijika sign-in page; odi-ui's own is kept at /odi/login. */
+	{ "/login",         "nj-login.html", "text/html; charset=utf-8" },
+	{ "/odi/login",     "login.html",  "text/html; charset=utf-8" },
 	{ "/login.js",      "login.js",    "application/javascript" },
 	{ "/style.css",     "style.css",   "text/css" },
 	{ "/app.js",        "app.js",      "application/javascript" },

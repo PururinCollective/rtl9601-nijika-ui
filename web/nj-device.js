@@ -78,6 +78,44 @@ function stat(label, sub) {
   };
 }
 
+/*
+ * The light in on a scale, with the class B+ window on it: green in its
+ * middle, yellow in the outer 16 % at each end, red out of it, as odi-ui's
+ * receive meter draws it. The needle is the reading; the marks under the
+ * bar are the edges, the window's in red, the near-edge ones in yellow.
+ */
+const LIGHT_SCALE = [-30, -4];
+function lightBar([lo, hi]) {
+  const [a, b] = LIGHT_SCALE;
+  const pct = (v) => ((Math.max(a, Math.min(b, v)) - a) / (b - a)) * 100;
+  const edge = (hi - lo) * 0.16;
+  const box = el('div', 'nj-light');
+  const track = el('div', 'nj-light-track');
+  [lo, lo + edge, hi - edge, hi].forEach((v, i) => track.style.setProperty('--e' + i, pct(v).toFixed(2) + '%'));
+  const needle = el('i', 'nj-light-needle none');
+  needle.hidden = true;
+  track.append(needle);
+  const marks = el('div', 'nj-light-marks');
+  for (const [v, cls, text] of [[lo, 'bad', signed(lo, 0)], [lo + edge, 'warn', ''], [hi - edge, 'warn', ''],
+    [hi, 'bad', signed(hi, 0) + ' dBm']]) {
+    const m = el('span', 'nj-light-mark ' + cls);
+    m.style.left = pct(v).toFixed(2) + '%';
+    if (text) m.append(el('span', null, text));
+    marks.append(m);
+  }
+  box.title = `Class B+ receive window: ${signed(lo, 0)} dBm (sensitivity) to ${signed(hi, 0)} dBm (overload). `
+    + 'Yellow: the outer 16 % at each end, near the edge.';
+  box.append(track, marks);
+  return {
+    el: box,
+    set(v, ver) {
+      needle.hidden = v === null || v === undefined;
+      if (!needle.hidden) needle.style.left = pct(v).toFixed(2) + '%';
+      needle.className = 'nj-light-needle ' + (ver || 'none');
+    },
+  };
+}
+
 /* --- the stick ----------------------------------------------------------- */
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -109,6 +147,42 @@ const US_PATH = [
   { transform: `translate(-8px, ${FY + 2.5}px)`, opacity: 0 },
 ];
 
+/* Where in its run a dot reaches the photodiode, and a dash leaves the laser. */
+const DS_ARRIVE = 0.96;
+const US_LEAVE = 0.03;
+
+/*
+ * A diode as a flash: its body, and a burst on the side the light comes in
+ * or goes out by. toward is in degrees, 0 to the left (the laser sends down
+ * the fibre), 90 up (the photodiode takes the light from the filter above).
+ */
+const BURST = [[-58, 5], [-42, 12], [-27, 6.5], [-9, 13.5], [8, 6.5], [26, 12], [44, 6], [58, 4.6]];
+function diode(cx, cy, toward, size, cls) {
+  const g = svg('g', { class: 'flash ' + cls, transform: `translate(${cx} ${cy}) rotate(${toward})` });
+  const pts = BURST.map(([a, r]) => {
+    const t = (180 + a) * Math.PI / 180;
+    return `${(r * size * Math.cos(t)).toFixed(2)},${(r * size * Math.sin(t)).toFixed(2)}`;
+  });
+  const burst = svg('polygon', { class: 'burst', points: pts.join(' ') });
+  const body = svg('circle', { class: 'body', r: 4.5 });
+  g.append(burst, body);
+  return { g, burst, body };
+}
+
+/* One flash per period, lit at the moment `at` (ms on the particles' clock). */
+const BURST_KF = [
+  { opacity: 0.16, transform: 'scale(0.8)' },
+  { opacity: 1, transform: 'scale(1.12)', offset: 0.08 },
+  { opacity: 0.16, transform: 'scale(0.86)', offset: 0.45 },
+  { opacity: 0.16, transform: 'scale(0.8)' },
+];
+const BODY_KF = [{ fillOpacity: 0.15 }, { fillOpacity: 0.95, offset: 0.08 }, { fillOpacity: 0.15, offset: 0.45 }, { fillOpacity: 0.15 }];
+function flashes(d, period, at) {
+  const x = (((at - 0.08 * period) % period) + period) % period;
+  const o = { duration: period, iterations: Infinity, delay: x - period };
+  return [d.burst.animate(BURST_KF, o), d.body.animate(BODY_KF, o)];
+}
+
 /* A rate as a speed: an idle line still moves, slowly; a gigabit runs. */
 const speed = (bps) => (bps === null || bps === undefined ? 0.5
   : Math.max(0.5, Math.min(3.2, 0.5 + Math.log10(1 + bps / 1000) / 2.2)));
@@ -126,11 +200,10 @@ function drawStick(model) {
   s.append(svg('line', { class: 'core', x1: 64, y1: FY, x2: 168, y2: FY }));
   s.append(svg('line', { class: 'filter', x1: 100, y1: FY - 11, x2: 116, y2: FY + 11 }));
   s.append(svg('rect', { class: 'can', x: 168, y: FY - 12, width: 32, height: 24, rx: 5 }));
-  s.append(svg('circle', { class: 'glow-ld', cx: 166, cy: FY, r: 15 }));
-  s.append(svg('circle', { class: 'ld', cx: 168, cy: FY, r: 4.5 }));
+  const ld = diode(168, FY, 0, 1, 'ld');
   s.append(svg('rect', { class: 'can', x: 96, y: FY + 18, width: 24, height: 15, rx: 4 }));
-  s.append(svg('circle', { class: 'glow-pd', cx: 108, cy: FY + 18, r: 13 }));
-  s.append(svg('circle', { class: 'pd', cx: 108, cy: FY + 18, r: 4.5 }));
+  const pd = diode(108, FY + 18, 90, 0.7, 'pd');
+  s.append(ld.g, pd.g);
   s.append(svg('text', { class: 'lbl ds', x: 124, y: FY + 31 }, '1490 nm ↓'));
   s.append(svg('text', { class: 'lbl us', x: 200, y: FY - 17, 'text-anchor': 'end' }, '1310 nm ↑'));
   const cut = model.lastIndexOf('-');
@@ -155,6 +228,11 @@ function drawStick(model) {
       { duration: DUR.ds, iterations: Infinity, delay: -k * DUR.ds / N_DS })));
     [...us.children].forEach((c, k) => anims.us.push(c.animate(US_PATH,
       { duration: DUR.us, iterations: Infinity, delay: -k * DUR.us / N_US })));
+    /* The flashes: the photodiode as each dot comes down into it, the laser
+       as each dash leaves it. They share the clock and the rate changes of
+       the particles, so they stay in step at any speed. */
+    anims.ds.push(...flashes(pd, DUR.ds / N_DS, DS_ARRIVE * DUR.ds));
+    anims.us.push(...flashes(ld, DUR.us / N_US, US_LEAVE * DUR.us));
   } else {
     ds.style.display = 'none';
     us.style.display = 'none';
@@ -214,9 +292,12 @@ function renderDevice(host) {
   const body = el('div', 'pon-body');
   const stick = drawStick(MODEL);
   const grid = el('div', 'pon-stats');
-  const P = { state: stat('State', 'Operation state'), rx: stat('Laser in', '1490 nm, downstream'),
+  const P = { state: stat('State', 'Operation state'), rx: stat('Light in', '1490 nm, downstream'),
     tx: stat('Laser out', '1310 nm, upstream'), temp: stat('Temperature', 'module'),
     traffic: stat('Traffic', 'live, from the port counters') };
+  const light = lightBar(WINDOW.rx);
+  P.rx.box.classList.add('stat-light');
+  P.rx.box.insertBefore(light.el, P.rx.box.lastChild);
   for (const k of ['state', 'rx', 'tx', 'temp', 'traffic']) grid.append(P[k].box);
   body.append(stick.s, grid);
   const foot = el('div', 'cbi-section-foot');
@@ -354,6 +435,7 @@ function renderDevice(host) {
     P.rx.set(st.rx === null ? null : signed(st.rx, 1) + ' dBm', vr,
       '1490 nm, downstream' + (st.los ? ', loss of signal' : vr === 'good' ? ', in the B+ window'
         : vr === 'warn' ? ', near the edge' : vr === 'bad' ? ', out of the window' : ''));
+    light.set(st.los ? null : st.rx, vr);
     P.tx.set(st.tx === null ? null : signed(st.tx, 1) + ' dBm', verdict(st.tx, WINDOW.tx));
     const hasChip = st.chip && typeof st.chip.celsius === 'number';
     P.temp.set(st.temp === null ? null : signed(st.temp, 1) + '°C' + (hasChip ? ` / ${signed(st.chip.celsius, 1)}°C` : ''),

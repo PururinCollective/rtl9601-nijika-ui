@@ -222,10 +222,13 @@
       <p class="lede">What the OLT is told this ONU is.</p>
       <div id="identity-switch" class="switchrow" hidden></div>
       <div id="identity-out"></div>
-      <!-- Nijika: Device Emulation and the identity fields (nj-identity.js). -->
+      <!-- Nijika: Device Emulation and the identity fields (nj-identity.js), then
+           the rest of odi-ui's identity rows as a card of their own. -->
       <div id="nj-identity"></div>
-      <h3 class="nj-subhead">More identity settings</h3>
-      <div class="settings" id="set-identity"></div>
+      <section class="cbi-section nj-ext">
+        <h3>Extended ONT Identity</h3>
+        <div class="settings" id="set-identity"></div>
+      </section>
       <details class="expert" id="expert" hidden>
         <summary>Expert settings</summary>
         <p class="s-warn">These change how the stick presents itself to the OLT. A wrong
@@ -779,8 +782,7 @@
 </dialog>
 
 <footer class="nj-container nj-footer">
-  <p>Open PON Foundation <span class="sep">&middot;</span> NIJIKA Luna &times; ODI OSS <span class="sep">&middot;</span> <span id="build"></span></p>
-  <p>Inspiration from Peter-Pon by Pedro Teixeira</p>
+  <p>Open PON Foundation <span class="sep">&middot;</span> NIJIKA Luna &times; ODI OSS &times; Peter-Pon <span class="sep">&middot;</span> <span id="build"></span></p>
 </footer>
 
 <script type="module" src="/nijika.js"></script>

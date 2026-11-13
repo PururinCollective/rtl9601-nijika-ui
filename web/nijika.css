@@ -183,6 +183,8 @@ button.primary { color: var(--nj-on-accent); }
 @media (hover: hover) { .nj-nav .dropdown:hover .dropdown-menu { display: block; } }
 .nj-nav .dropdown:focus-within .dropdown-menu,
 .nj-nav .dropdown.open .dropdown-menu { display: block; }
+/* An entry just chosen: the list closes, until the pointer leaves it. */
+.nj-nav .dropdown.nj-shut .dropdown-menu { display: none; }
 .nj-nav .dropdown-menu a {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 7px 12px; border-radius: var(--nj-radius-sm); color: var(--nj-text); white-space: nowrap;
@@ -541,7 +543,7 @@ ul.vlans .vid { font-size: 17px; font-weight: 700; font-variant-numeric: tabular
   display: grid; grid-template-columns: minmax(220px, 320px) 1fr; gap: 28px; align-items: center;
   padding: 18px 18px;
 }
-.pon-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 24px; }
+.pon-stats { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr) minmax(0, 1fr); gap: 18px 24px; }
 .stat { min-width: 0; }
 .stat:last-child { grid-column: span 2; }
 .stat-label { display: block; color: var(--nj-dim); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
@@ -551,6 +553,32 @@ ul.vlans .vid { font-size: 17px; font-weight: 700; font-variant-numeric: tabular
 .stat-sub { display: block; margin-top: 2px; color: var(--nj-dim); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-value .ds { color: var(--nj-ds); }
 .stat-value .us { color: var(--nj-us); }
+
+/* The light in on a scale (nj-device.js lightBar): the class B+ window in
+   green, its outer 16 % in yellow, outside it in red; edges marked under. */
+.nj-light { margin: 9px 0 2px; max-width: 360px; }
+.nj-light-track {
+  --zb: color-mix(in srgb, var(--nj-bad) 38%, var(--nj-panel));
+  --zw: color-mix(in srgb, var(--nj-warn) 40%, var(--nj-panel));
+  --zg: color-mix(in srgb, var(--nj-good) 45%, var(--nj-panel));
+  position: relative; height: 8px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--zb) 0 var(--e0), var(--zw) var(--e0) var(--e1), var(--zg) var(--e1) var(--e2),
+    var(--zw) var(--e2) var(--e3), var(--zb) var(--e3) 100%);
+}
+.nj-light-needle {
+  position: absolute; top: -5px; width: 8px; height: 18px; margin-left: -4px; border-radius: 4px;
+  background: var(--nj-none); border: 2px solid var(--nj-panel); box-shadow: 0 0 0 1px var(--nj-border-2);
+  transition: left .5s;
+}
+.nj-light-needle.good { background: var(--nj-good); }
+.nj-light-needle.warn { background: var(--nj-warn); }
+.nj-light-needle.bad { background: var(--nj-bad); }
+.nj-light-marks { position: relative; height: 24px; color: var(--nj-dim); font-size: 11px; }
+.nj-light-mark { position: absolute; top: 3px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.nj-light-mark::before { content: ""; border: 4px solid transparent; border-top: 0; border-bottom: 6px solid currentColor; }
+.nj-light-mark.bad::before { color: var(--nj-bad); }
+.nj-light-mark.warn::before { color: var(--nj-warn); }
+.nj-light-mark > span { margin-top: 1px; line-height: 1.2; white-space: nowrap; }
 
 /* The stick, cut away: light arriving on the fibre turns down into the
    photodiode at the WDM filter, the laser answers up the same fibre. The
@@ -565,10 +593,15 @@ ul.vlans .vid { font-size: 17px; font-weight: 700; font-variant-numeric: tabular
 .nj-stick .pcb { fill: color-mix(in srgb, var(--nj-text) 5%, var(--nj-panel)); stroke: color-mix(in srgb, var(--nj-text) 22%, var(--nj-panel)); stroke-width: 1; }
 .nj-stick .filter { stroke: color-mix(in srgb, var(--nj-text) 55%, var(--nj-panel)); stroke-width: 2.4; stroke-linecap: round; }
 .nj-stick .can { fill: color-mix(in srgb, var(--nj-text) 16%, var(--nj-panel)); stroke: color-mix(in srgb, var(--nj-text) 30%, var(--nj-panel)); stroke-width: 1; }
-.nj-stick .pd { fill: var(--nj-panel); stroke: var(--nj-ds); stroke-width: 1.8; }
-.nj-stick .ld { fill: var(--nj-panel); stroke: var(--nj-us); stroke-width: 1.8; }
-.nj-stick .glow-pd { fill: var(--nj-ds); opacity: .4; transform-box: fill-box; transform-origin: center; animation: nj-breathe 1.6s ease-in-out infinite alternate; }
-.nj-stick .glow-ld { fill: var(--nj-us); opacity: .45; transform-box: fill-box; transform-origin: center; animation: nj-flick .45s ease-in-out infinite alternate; }
+/* The diodes as flashes: a body, and a burst lit by nj-device.js as each
+   dot arrives (the photodiode) and each dash leaves (the laser). */
+.nj-stick .flash .body { stroke-width: 1.8; fill-opacity: .15; }
+.nj-stick .flash .burst { stroke-width: 1; stroke-linejoin: round; opacity: .16; }
+.nj-stick .flash.pd .body { fill: var(--nj-ds); stroke: var(--nj-ds); }
+.nj-stick .flash.pd .burst { fill: color-mix(in srgb, var(--nj-ds) 30%, var(--nj-panel)); stroke: var(--nj-ds); }
+.nj-stick .flash.ld .body { fill: var(--nj-us); stroke: var(--nj-us); }
+.nj-stick .flash.ld .burst { fill: color-mix(in srgb, var(--nj-us) 30%, var(--nj-panel)); stroke: var(--nj-us); }
+@media (prefers-reduced-motion: reduce) { .nj-stick .flash .burst { opacity: .6; } }
 .nj-stick .p-ds { fill: var(--nj-ds); }
 .nj-stick .p-us { fill: var(--nj-us); }
 .nj-stick .gold { fill: var(--nj-gold); }
@@ -579,13 +612,11 @@ ul.vlans .vid { font-size: 17px; font-weight: 700; font-variant-numeric: tabular
 .nj-stick .arrow { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .nj-stick .arrow.ds { stroke: var(--nj-ds); }
 .nj-stick .arrow.us { stroke: var(--nj-us); }
-.nj-stick.nolight .p-ds, .nj-stick.nolight .glow-pd, .nj-stick.nolight .arrow.ds { display: none; }
-.nj-stick.nolight .pd { stroke: var(--nj-none); }
+.nj-stick.nolight .p-ds, .nj-stick.nolight .flash.pd .burst, .nj-stick.nolight .arrow.ds { display: none; }
+.nj-stick.nolight .flash.pd .body { stroke: var(--nj-none); fill: var(--nj-none); }
 .nj-stick.los .core { stroke: var(--nj-bad); stroke-dasharray: 4 4; }
-.nj-stick.laseroff .p-us, .nj-stick.laseroff .glow-ld, .nj-stick.laseroff .arrow.us { display: none; }
-.nj-stick.laseroff .ld { stroke: var(--nj-none); }
-@keyframes nj-breathe { from { transform: scale(.8); } to { transform: scale(1.18); } }
-@keyframes nj-flick { from { opacity: .25; } to { opacity: .9; } }
+.nj-stick.laseroff .p-us, .nj-stick.laseroff .flash.ld .burst, .nj-stick.laseroff .arrow.us { display: none; }
+.nj-stick.laseroff .flash.ld .body { stroke: var(--nj-none); fill: var(--nj-none); }
 
 .nj-shared .nj-bar { margin: 18px 18px 4px; }
 .nj-ticks { position: relative; height: 16px; margin: 0 18px; color: var(--nj-dim); font-size: 11px; }
@@ -598,6 +629,57 @@ ul.vlans .vid { font-size: 17px; font-weight: 700; font-variant-numeric: tabular
 
 .nj-footer { padding-top: 8px; padding-bottom: 28px; color: var(--nj-dim); font-size: 12.5px; text-align: center; }
 .nj-footer p { margin: 0 0 2px; }
+
+/* --- the sign-in page (nj-login.html) ------------------------------------- */
+
+.nj-signin-page { align-items: center; justify-content: center; padding: 24px 16px 0; box-sizing: border-box; }
+.nj-signin {
+  width: 100%; max-width: 400px; box-sizing: border-box; margin: auto 0 0; padding: 30px 24px 26px;
+  background: var(--nj-panel); border: var(--nj-hair); border-radius: var(--nj-radius-lg); box-shadow: var(--nj-pop);
+}
+.nj-signin-host { margin: 0 0 22px; text-align: center; color: var(--nj-dim); font-size: 16px; font-weight: 700; }
+.nj-signin h1 { margin: 0 0 4px; font-size: 21px; font-weight: 700; }
+.nj-signin-lede { margin: 0 0 18px; color: var(--nj-dim); font-size: 13.5px; }
+.nj-signin form { display: flex; flex-direction: column; }
+.nj-signin label { margin: 0 0 6px; color: var(--nj-dim); font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.nj-signin input {
+  box-sizing: border-box; width: 100%; height: 40px; margin: 0 0 18px; padding: 0 12px;
+  border: var(--nj-hair); border-radius: var(--nj-radius); background: var(--nj-panel-2); color: var(--nj-text);
+  font: 14px var(--nj-mono);
+}
+.nj-signin input:focus { outline: 2px solid var(--nj-accent-soft); border-color: var(--nj-accent); }
+.nj-signin button.primary {
+  display: flex; align-items: center; justify-content: center;
+  height: 44px; margin-top: 6px; border: 0; border-radius: var(--nj-radius); background: var(--nj-accent); color: var(--nj-on-accent);
+  font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.nj-signin button.primary:disabled { opacity: .6; cursor: default; }
+#signin-msg { margin: 0 0 12px; font-size: 13.5px; }
+#signin-msg:empty { display: none; }
+#signin-msg.bad { color: var(--nj-bad); }
+#signin-msg.good { color: var(--nj-good); }
+.nj-signin-foot { margin-top: auto; padding-top: 28px; }
+
+/* --- odi-ui blocks as cards ----------------------------------------------- */
+
+/* odi-ui draws its blocks flat, ruled off from each other by a top border,
+   and leaves the first block of a tab without it. Here every block is a
+   card, so the first keeps its border and its padding. */
+.nj-main .panel > .block:first-child,
+.nj-main .sub > .block:first-child,
+.nj-main .sub > .block-row:first-child > .block { border-top: var(--nj-hair); padding-top: 16px; }
+
+/* A settings card: odi-ui rules its rows off with a top border and leaves
+   it off the first row. A view that hides some rows (LOID, Route) then shows
+   the rule of its first visible row along the top of the card. Every row
+   keeps its rule here, one pixel up, and the card clips the topmost one. */
+.nj-main .settings > .setting { margin-top: -1px; }
+.nj-main .settings > .setting:first-child { border-top: 1px solid var(--line); }
+.nj-main .sub > .settings, .nj-main #expert > .settings, .nj-main .nj-ext > .settings { padding-top: 0; overflow-y: clip; }
+
+/* GPON > ONT Identity: the rest of odi-ui's identity rows, as one card. */
+.nj-ext { margin: 0 0 20px; }
+.nj-main .nj-ext > .settings { margin: 0; padding: 0 18px 4px; border: 0; border-radius: 0; box-shadow: none; background: none; }
 
 /* --- narrow screens ------------------------------------------------------ */
 

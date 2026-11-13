@@ -52,11 +52,17 @@ config_subs=config_subs.replace(line_old, line_old+'''      <!-- Nijika: the two
 ''')
 
 id_old='''      <div id="identity-out"></div>
+      <div class="settings" id="set-identity"></div>
 '''
 assert id_old in config_subs
-config_subs=config_subs.replace(id_old, id_old+'''      <!-- Nijika: Device Emulation and the identity fields (nj-identity.js). -->
+config_subs=config_subs.replace(id_old, '''      <div id="identity-out"></div>
+      <!-- Nijika: Device Emulation and the identity fields (nj-identity.js), then
+           the rest of odi-ui's identity rows as a card of their own. -->
       <div id="nj-identity"></div>
-      <h3 class="nj-subhead">More identity settings</h3>
+      <section class="cbi-section nj-ext">
+        <h3>Extended ONT Identity</h3>
+        <div class="settings" id="set-identity"></div>
+      </section>
 ''')
 
 mib_old='''    <div class="sub" id="o-mib" role="tabpanel" aria-labelledby="st-omci-mib" data-sub="mib" hidden>
@@ -207,8 +213,7 @@ out=head+fix(banners)+mid+fix(errs).replace('\n','\n  ').rstrip()+'\n'+pagehead+
 </main>
 
 '''+fix(tail)+'''<footer class="nj-container nj-footer">
-  <p>Open PON Foundation <span class="sep">&middot;</span> NIJIKA Luna &times; ODI OSS <span class="sep">&middot;</span> <span id="build"></span></p>
-  <p>Inspiration from Peter-Pon by Pedro Teixeira</p>
+  <p>Open PON Foundation <span class="sep">&middot;</span> NIJIKA Luna &times; ODI OSS &times; Peter-Pon <span class="sep">&middot;</span> <span id="build"></span></p>
 </footer>
 
 <script type="module" src="/nijika.js"></script>

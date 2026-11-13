@@ -27,9 +27,14 @@ value back before reporting success.
 
 ## Sign in
 
-    GET  /login                          the sign-in page (and /login.js, /style.css),
-                                          no credential needed; `303` to `/` when the
-                                          browser already has a live session
+    GET  /login                          the sign-in page, the Nijika one (and /login.js,
+                                          /style.css, /nijika.css), no credential needed;
+                                          `303` to `/` when the browser already has a
+                                          live session. odi-ui's own is at /odi/login
+    GET  /api/version                    `{"image":"...","confd":"..."}`, no credential
+                                          needed: the first word of /etc/version (empty
+                                          without one) and the build of confd, which the
+                                          sign-in page names in its footer
     POST /api/login    user=...&password=...
                                           200 `{"ok":true}` with
                                           `Set-Cookie: odi_session=<32 hex>; Path=/; HttpOnly; SameSite=Strict`;
