@@ -18,6 +18,8 @@
 #   PREVIEW_OMCI=<dir> scripts/preview.sh  -> the MIB from <dir>/<class>.txt, each what omcicli mib get
 #                                             prints, and the VLAN mode left to the OLT (a capture of
 #                                             a real line, kept outside this repository)
+#   PREVIEW_SERDES=hisgmii scripts/preview.sh -> the host port in that link mode (fiber1g, 2500basex,
+#                                             the default, or hisgmii)
 #   scripts/shot.mjs                       -> screenshots + console errors
 #   docker rm -f odi-ui-preview            -> stop it
 set -e
@@ -31,7 +33,7 @@ if [ -n "${PREVIEW_OMCI:-}" ]; then
   [ -d "$PREVIEW_OMCI" ] || { echo "PREVIEW_OMCI: no directory $PREVIEW_OMCI" >&2; exit 1; }
   OMCI_MOUNT=(-v "$(cd "$PREVIEW_OMCI" && pwd)":/omci:ro)
 fi
-docker run -d --name odi-ui-preview -p 18080:18080 --cap-add SYSLOG -e PREVIEW_TRIAL -e PREVIEW_DEV -e PREVIEW_OMCI "${OMCI_MOUNT[@]}" \
+docker run -d --name odi-ui-preview -p 18080:18080 --cap-add SYSLOG -e PREVIEW_TRIAL -e PREVIEW_DEV -e PREVIEW_OMCI -e PREVIEW_SERDES "${OMCI_MOUNT[@]}" \
   -v "$PWD":/src -w /src "$IMAGE" bash -c '
     mkdir -p /etc/confd /etc/config /etc/scripts
     cp schema/*.tsv web/*.html web/*.css web/*.js /etc/confd/
@@ -208,7 +210,7 @@ NV
     # The counters behind the shared PON section. The file stands still, so
     # the section shows "measuring".
     echo 1 > $Q/sys/module/odi_switch/parameters/host_link
-    printf "setting=2500basex\nrunning=2500basex\nphase=steady\n" > /var/run/host-serdes
+    m=${PREVIEW_SERDES:-2500basex}; printf "setting=%s\nrunning=%s\nphase=steady\n" $m $m > /var/run/host-serdes
     printf "setting=on\nrunning=on\nphase=steady\n" > /var/run/host-autoneg
     # The host port scripts of the image, as stand-ins, so Network > LAN shows
     # the link mode and auto-negotiation card as on a stick. A trial waits for
@@ -221,7 +223,11 @@ S=/var/run/${0##*/}; S=${S%.sh}
 setting=$(sed -n "s/^setting=//p" $S); running=$(sed -n "s/^running=//p" $S)
 put() { printf "setting=%s\nrunning=%s\nphase=%s\n%s" "$1" "$2" "$3" "$4" > $S; }
 case "$1" in
-status)  cat $S; echo link=1; echo link_source=serdes_sync; echo autoneg=off ;;
+status)  cat $S; case $running in
+         hisgmii) echo link=unknown; echo link_source=none; echo autoneg=on ;;
+         fiber1g|on|off) echo link=1; echo link_source=host_link; echo autoneg=on ;;
+         *) echo link=1; echo link_source=serdes_sync; echo autoneg=off ;;
+         esac ;;
 try)     put "$setting" "$2" trial "trial_mode=$2
 trial_deadline=93904
 "; echo "trial of $2" ;;

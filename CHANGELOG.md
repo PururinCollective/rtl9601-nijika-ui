@@ -107,6 +107,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   names its version.
 - The footer after a sign-in is one line: Open PON Foundation · NIJIKA Luna × ODI OSS ×
   Peter-Pon · the image version (the confd build without one, and in its tooltip).
+- Network > LAN, Host port: in HiSGMII, a mode the image reads no link signal in, Host link reads
+  "3.125 Gbaud SerDes" (what the port runs) instead of "unknown (from no signal in this mode)".
+  `scripts/preview.sh` answers the host port status per mode as the image does, and
+  `PREVIEW_SERDES=<mode>` starts the preview in fiber1g, 2500basex (the default) or hisgmii.
 - Status > Device: Target Platform reads RTL9601D DevKit, what the stick is; the system type
   the odi-oss kernel reports (the ODI DFP-34X-2C2 board, an RTL9602C) is in its tooltip.
 - Status > Device, PON box: Light in has a bar, the class B+ window in green with its outer

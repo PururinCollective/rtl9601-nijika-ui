@@ -177,7 +177,10 @@ function renderBlock() {
     row('Link mode now', serdesShort(ss.running || 'fiber1g'));
     row('Stored link mode', serdesShort(ss.setting || 'fiber1g'));
   }
-  row('Host link', link + src, link === 'up' ? 'good' : link === 'down' ? 'bad' : '');
+  /* Nijika: HiSGMII has no link signal the image reads, so the row names
+     what the port runs instead of "unknown". */
+  const rate = sd && ss.running === 'hisgmii' && link === 'unknown';
+  row('Host link', rate ? '3.125 Gbaud SerDes' : link + src, link === 'up' ? 'good' : link === 'down' ? 'bad' : '');
   if (st.phase === 'watch') row('Boot check', 'Still deciding the mode; try again in a minute.', 'warn');
   if (ss.phase === 'watch') row('Link mode boot check', 'Still deciding the mode; try again in a minute.', 'warn');
   if (st.message) row('Last event', st.message);
