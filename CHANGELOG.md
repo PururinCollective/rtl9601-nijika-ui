@@ -79,7 +79,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   settings on ONT Identity, open, puts GPON > Advanced in the menu and shows each setting's key
   name; off, the default, keeps all three out of sight.
 - Schema: `HW_SERIAL_NO` is a `str32` (printable, up to 32 characters), not a MAC: it is the
-  serial number of the unit, `NIJK40004000` for one, and has a meta row.
+  serial number of the unit, `NIJK40004000` for one, and has a meta row. `make check` holds
+  it to that (`scripts/web-check.mjs`), and `WLAN_MAC_ADDR` stays a plain `mac`.
 - `/api/status` also sends `loadavg`, `hostname`, `cpu_model` and `system_type`, plain file
   reads like the other overview members; Status > Device takes the uptime from odi-ui's
   `uptime`, the whole seconds. The preview has them, and ME 47.
