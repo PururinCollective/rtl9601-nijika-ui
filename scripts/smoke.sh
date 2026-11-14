@@ -203,6 +203,7 @@ sw=""
 [ -f /tmp/nv.noactive ] || sw="sw_active=$act\n"
 case "$1 $2" in
 "getenv sw_active") echo "sw_active=$act" ;;
+"getenv odi_oss_ui") [ -f /tmp/nv.odi_ui ] && echo "odi_oss_ui=$(cat /tmp/nv.odi_ui)" ;;
 "getenv ") printf "${sw}sw_commit=0\nsw_tryactive=2\nsw_version0=a\nsw_version1=b\n" ;;
 "getenv")  printf "${sw}sw_commit=0\nsw_tryactive=2\nsw_version0=a\nsw_version1=b\n" ;;
 esac
@@ -938,8 +939,20 @@ for f in web/*.js web/*.css web/*.html; do
 	b=$(basename "$f")
 	u="/$b"; [ "$b" = nijika.html ] && u="/"; [ "$b" = nj-login.html ] && u="/login"
 	[ "$b" = login.html ] && u="/odi/login"
+	# odi-ui's own two pages are hidden until nv holds odi_oss_ui=1 (below).
+	case $b in index.html|login.html) continue ;; esac
 	check "serves $b" 200 "$(code -u "$AUTH" "http://127.0.0.1:$PORT$u")"
 done
+for u in /odi /index.html /odi/login; do
+	check "odi-ui page $u: hidden without odi_oss_ui" 404 "$(code -u "$AUTH" "http://127.0.0.1:$PORT$u")"
+done
+echo 1 > /tmp/nv.odi_ui
+for u in /odi /index.html /odi/login; do
+	check "odi-ui page $u: served with odi_oss_ui=1" 200 "$(code -u "$AUTH" "http://127.0.0.1:$PORT$u")"
+done
+echo 0 > /tmp/nv.odi_ui
+check "odi-ui page /odi: hidden again with odi_oss_ui=0" 404 "$(code -u "$AUTH" "http://127.0.0.1:$PORT/odi")"
+rm -f /tmp/nv.odi_ui
 check "an unlisted file is refused" 404 \
 	"$(code -u "$AUTH" "http://127.0.0.1:$PORT/keys.tsv")"
 # The table is literals, so there is no path to traverse -- assert it anyway,

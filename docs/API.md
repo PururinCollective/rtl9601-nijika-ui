@@ -30,7 +30,9 @@ value back before reporting success.
     GET  /login                          the sign-in page, the Nijika one (and /login.js,
                                           /style.css, /nijika.css), no credential needed;
                                           `303` to `/` when the browser already has a
-                                          live session. odi-ui's own is at /odi/login
+                                          live session. odi-ui's own is at /odi/login,
+                                          served as /odi and /index.html are, only while
+                                          `nv getenv odi_oss_ui` says 1 (404 otherwise)
     GET  /api/version                    `{"image":"...","confd":"..."}`, no credential
                                           needed: the first word of /etc/version (empty
                                           without one) and the build of confd, which the

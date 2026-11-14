@@ -10,7 +10,8 @@ their fibre and their router online without first learning OMCI.
 
 Nijika UI is a fork of [odi-ui](https://github.com/AndreZiviani/odi-ui) by
 Andre Ziviani and runs on its `confd` daemon, schema and API. Every odi-ui
-view is in the Nijika menu, and odi-ui's own page stays whole at `/odi`.
+view is in the Nijika menu, and odi-ui's own page stays whole at `/odi`,
+shown when the stick is told to (below).
 [odi-ui's README](#odi-ui) follows below this part.
 
 ## What you get
@@ -75,8 +76,14 @@ serial number and MAC addresses are placeholders.
 ## Using it
 
 On a Nijika Luna image, open the stick's management address in a browser
-(192.168.1.1 on a new stick) and sign in. The Nijika UI is the page at `/`;
-odi-ui's own page is at `/odi`, its sign-in at `/odi/login`.
+(192.168.1.1 on a new stick) and sign in. The Nijika UI is the page at `/`.
+odi-ui's own page, at `/odi` with its sign-in at `/odi/login`, is hidden
+(404) until the U-Boot environment says otherwise, from a shell on the
+stick (SSH, Telnet or the serial console); it counts at once, with no
+reboot:
+
+    nv setenv odi_oss_ui 1    # show odi-ui at /odi
+    nv setenv odi_oss_ui 0    # hide it again (as with no odi_oss_ui at all)
 
 ## Working on it
 

@@ -738,6 +738,29 @@ static int emit_ntp_status(int conn)
 }
 
 /*
+ * Nijika Luna: odi-ui's own page (/odi, /index.html, /odi/login) is served
+ * only while the U-Boot environment holds odi_oss_ui=1 (`nv setenv
+ * odi_oss_ui 1`). Without it, or with any other value, those paths answer
+ * 404 as a file that is not there; the Nijika UI at / is the page. The
+ * variable is read on each request for one of them: they are rarely
+ * opened, and a change then counts at once, with no restart.
+ */
+static int odi_page(const char *path)
+{
+	return seq(path, "/odi") || seq(path, "/index.html") || seq(path, "/odi/login");
+}
+
+static int odi_ui_enabled(void)
+{
+	static char *const argv[] = { "nv", "getenv", "odi_oss_ui", 0 };
+	char buf[64];
+	long n = run_to_buf("/bin/nv", argv, buf, sizeof(buf), NV_TIMEOUT_MS);
+
+	return n >= 12 && spre(buf, "odi_oss_ui=1") &&
+	       (buf[12] == 0 || buf[12] == '\n' || buf[12] == '\r');
+}
+
+/*
  * The routes that answer before a credential is asked for: the sign-in page
  * and what it loads, the sign-in itself, and sign-out. Returns 1 when it
  * answered. Runs after request_refusal(), so a rebound DNS name gets none of
@@ -2444,7 +2467,7 @@ void serve(int conn)
 		emit_voip_json(conn);
 		return;
 	}
-	if (!serve_asset(conn, path)) {
+	if ((odi_page(path) && !odi_ui_enabled()) || !serve_asset(conn, path)) {
 		respond(conn, "404 Not Found", "text/plain", 0);
 		put_fd(conn, "not found\n");
 	}

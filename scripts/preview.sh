@@ -20,6 +20,7 @@
 #                                             a real line, kept outside this repository)
 #   PREVIEW_SERDES=hisgmii scripts/preview.sh -> the host port in that link mode (fiber1g, 2500basex,
 #                                             the default, or hisgmii)
+#   PREVIEW_ODI=1 scripts/preview.sh       -> odi-ui at /odi too (on a stick: nv setenv odi_oss_ui 1)
 #   scripts/shot.mjs                       -> screenshots + console errors
 #   docker rm -f odi-ui-preview            -> stop it
 set -e
@@ -33,7 +34,7 @@ if [ -n "${PREVIEW_OMCI:-}" ]; then
   [ -d "$PREVIEW_OMCI" ] || { echo "PREVIEW_OMCI: no directory $PREVIEW_OMCI" >&2; exit 1; }
   OMCI_MOUNT=(-v "$(cd "$PREVIEW_OMCI" && pwd)":/omci:ro)
 fi
-docker run -d --name odi-ui-preview -p 18080:18080 --cap-add SYSLOG -e PREVIEW_TRIAL -e PREVIEW_DEV -e PREVIEW_OMCI -e PREVIEW_SERDES "${OMCI_MOUNT[@]}" \
+docker run -d --name odi-ui-preview -p 18080:18080 --cap-add SYSLOG -e PREVIEW_TRIAL -e PREVIEW_DEV -e PREVIEW_OMCI -e PREVIEW_SERDES -e PREVIEW_ODI "${OMCI_MOUNT[@]}" \
   -v "$PWD":/src -w /src "$IMAGE" bash -c '
     mkdir -p /etc/confd /etc/config /etc/scripts
     cp schema/*.tsv web/*.html web/*.css web/*.js /etc/confd/
@@ -170,11 +171,15 @@ case "$1 $2" in
 "getenv sw_active")  echo "sw_active=0" ;;
 "getenv "|"getenv")  printf "sw_active=0\nsw_commit=0\nsw_tryactive=2\nsw_version0=ODI-260910-6861b53\nsw_version1=V1.0-220923\n" ;;
 "fallback "|"fallback") printf "Fallback environment: 1\nsw_active=0\nsw_commit=0\nsw_tryactive=2\n" ;;
+"getenv odi_oss_ui") [ -f /etc/config/odi_oss_ui ] && echo odi_oss_ui=1 ;;
+"setenv odi_oss_ui") if [ "$3" = 1 ]; then : > /etc/config/odi_oss_ui; else rm -f /etc/config/odi_oss_ui; fi ;;
 "setenv"*)           ;;
 esac
 exit 0
 NV
     chmod +x /bin/nv
+    # PREVIEW_ODI=1 shows odi-ui at /odi, as nv setenv odi_oss_ui 1 does on a stick.
+    if [ -n "$PREVIEW_ODI" ]; then : > /etc/config/odi_oss_ui; fi
     # PREVIEW_TRIAL=1 previews a trial boot: running slot 0, committed slot 1.
     if [ -n "$PREVIEW_TRIAL" ]; then sed -i "s/sw_commit=0/sw_commit=1/g" /bin/nv; fi
     # PREVIEW_OMCI previews a real line: its VLANs are the OLT ones, not the manual tag.

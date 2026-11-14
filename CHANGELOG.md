@@ -107,6 +107,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   names its version.
 - The footer after a sign-in is one line: Open PON Foundation · NIJIKA Luna × ODI OSS ×
   Peter-Pon · the image version (the confd build without one, and in its tooltip).
+- odi-ui's own page (`/odi`, `/index.html`, `/odi/login`) is hidden, a 404, unless the U-Boot
+  environment holds `odi_oss_ui=1` (`nv setenv odi_oss_ui 1` from SSH, Telnet or the serial
+  console; 0 or no variable hides it). confd asks `nv` on each request for one of those pages,
+  so a change counts at once. The smoke run checks all three hidden, shown with 1 and hidden
+  again with 0; the preview shows them with `PREVIEW_ODI=1`.
 - Network > LAN, Host port: in HiSGMII, a mode the image reads no link signal in, Host link reads
   "3.125 Gbaud SerDes" (what the port runs) instead of "unknown (from no signal in this mode)".
   `scripts/preview.sh` answers the host port status per mode as the image does, and
