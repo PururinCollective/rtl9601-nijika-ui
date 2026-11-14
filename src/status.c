@@ -191,6 +191,19 @@ static void emit_pon_load(int fd)
 		emit_member(fd, "ds_gem_idle_sat", v, n);
 }
 
+/* How long the stick has been up, the whole seconds of /proc/uptime. */
+static void emit_uptime(int fd, char *buf, unsigned long cap)
+{
+	unsigned long k = 0;
+
+	if (read_file(UPTIME_FILE, buf, cap) <= 0)
+		return;
+	while (buf[k] >= '0' && buf[k] <= '9')
+		k++;
+	if (k)
+		emit_member(fd, "uptime", buf, k);
+}
+
 static void emit_overview(int fd)
 {
 	char buf[2048];
@@ -203,10 +216,10 @@ static void emit_overview(int fd)
 	emit_line(fd, "ranging", GPON_STATUS, "ranging_time ", buf, sizeof(buf));
 	emit_line(fd, "host_link", HOSTLINK_LINK, "", buf, sizeof(buf));
 	emit_line(fd, "host_mode", SERDES_STATE, "running=", buf, sizeof(buf));
+	emit_uptime(fd, buf, sizeof(buf));
 	emit_pon_load(fd);
-	/* The system facts a LuCI-style overview shows: uptime and load, the
-	 * host name, and the CPU and system type the kernel reports. */
-	emit_line(fd, "uptime", UPTIME_FILE, "", buf, sizeof(buf));
+	/* The system facts a LuCI-style overview shows besides the uptime: the
+	 * load, the host name, and the CPU and system type the kernel reports. */
 	emit_line(fd, "loadavg", PROC_LOADAVG, "", buf, sizeof(buf));
 	emit_line(fd, "hostname", PROC_HOSTNAME, "", buf, sizeof(buf));
 	emit_line(fd, "cpu_model", PROC_CPUINFO, "cpu model", buf, sizeof(buf));
@@ -226,6 +239,7 @@ void emit_status_json(int fd)
 		"pon get transceiver tx-power\n"
 		"pon get transceiver temperature\n"
 		"pon get transceiver voltage\n"
+		"pon get transceiver bias-current\n"
 		"gpon get onu-state\n"
 		"gpon get alarm-status\n"
 		"mib dump counter port all\n"

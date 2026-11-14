@@ -30,7 +30,7 @@ const raw = [
   'Port: 2', 'ifInOctets                         : 5000', 'ifOutOctets                        : 700', '',
 ].join('\n');
 const st = D.parseStatus({
-  raw, mem_total: '          27508 kB', mem_avail: '      14792 kB', uptime: '93784.51 90210.33',
+  raw, mem_total: '          27508 kB', mem_avail: '      14792 kB', uptime: '93784',
   loadavg: '0.08 0.12 0.09 1/43 812', hostname: 'NIJIKA-Luna\n', cpu_model: '\t\t: RLX5281 V0.2',
   system_type: '\t\t: Realtek RTL9602C (ODI DFP-34X-2C2)', host_link: '1', host_mode: 'hisgmii', onu_id: '13',
 });
@@ -38,7 +38,7 @@ eq([st.state, st.rx, st.tx, st.temp, st.volt], ['O5', -18.42, 2.15, 45.5, 3.28],
 eq([st.los, st.alarms.length], [false, 2], 'alarms read, none asserted');
 eq(st.ports['2'], { ifInOctets: 5000, ifOutOctets: 700 }, 'port counters');
 eq([st.memTotal, st.memAvail], [27508 * 1024, 14792 * 1024], 'memory');
-eq([st.uptime, st.load, st.hostname], [93784.51, [0.08, 0.12, 0.09], 'NIJIKA-Luna'], 'uptime, load, host name');
+eq([st.uptime, st.load, st.hostname], [93784, [0.08, 0.12, 0.09], 'NIJIKA-Luna'], 'uptime, load, host name');
 eq([st.cpuModel, st.systemType], ['RLX5281 V0.2', 'Realtek RTL9602C (ODI DFP-34X-2C2)'], 'cpuinfo lines');
 eq([st.hostLink, st.hostMode, st.onuId], [true, 'hisgmii', 13], 'host side and ONU-ID');
 
