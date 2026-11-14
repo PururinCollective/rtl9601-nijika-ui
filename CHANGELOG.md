@@ -122,6 +122,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `scripts/preview.sh`: stand-ins for `host-serdes.sh` and `host-autoneg.sh`, so Network > LAN
   shows the Host port card (Link mode, auto-negotiation) as on a stick, where the image has
   both scripts.
+- README: a Nijika UI part ahead of odi-ui's own README: what the page offers, the classic
+  NIJIKA pages beside it, screenshots in `docs/screenshot-nijika/` (the serial number and the
+  MAC addresses are placeholders), where the Nijika files are and the credits.
 
 ## v1.16.0 (2026-11-12)
 
