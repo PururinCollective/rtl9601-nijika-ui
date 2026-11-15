@@ -141,6 +141,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   been up under Stick ("Uptime 3 d 4 h 12 min", to the minute). The Stick block now shows on an
   image without the chip sensor too, with the uptime alone. `/api/status` gains `uptime`, the
   whole seconds of /proc/uptime, a plain file read. Refs AndreZiviani/odi-oss#384.
+- System > Firmware Update: the image picker offers `.image` files too, the name Nijika Luna
+  gives its image tarballs (`nijika-luna-<version>-dev.image`, `-distribution.image`).
 
 ## v1.16.0 (2026-11-12)
 
