@@ -431,7 +431,7 @@ BLOCK = [
  '<p class="help">This page shows the kernel log buffer. To keep daemon logs, set a <a href="#system/advanced">remote syslog server</a>.</p>'),
 ('<summary>How it is read</summary>', '</details>',
  '<summary>Note</summary>\n'
- '          <p>Read with <code>klogctl</code>, without clearing the buffer. Daemon logs are in <code>/var/log/omcid.log</code> and <code>/var/log/services.log</code> (RAM, over SSH), and on the remote syslog server when set.</p>\n'
+ '          <p>Read from <code>/dev/kmsg</code>, with the time of each line, on the odi-oss kernel, and with <code>klogctl</code> on the stock one, without clearing the buffer. Daemon logs are in <code>/var/log/omcid.log</code> and <code>/var/log/services.log</code> (RAM, over SSH), and on the remote syslog server when set.</p>\n'
  '        </details>'),
 ('<p class="help">Logs, the previous boot&rsquo;s kernel log,', '</p>',
  '<p class="help">Download the logs, the kernel log of the previous boot, the slot state and the configuration (passwords removed) as one <code>.tar.gz</code> for a bug report. The serial number and MAC are included.</p>'),

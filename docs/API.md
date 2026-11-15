@@ -130,6 +130,14 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           name (letters, digits, `_`, 39 at most);
                                           `entity` is optional hex, 1-4 digits (16
                                           bits), `0x` allowed
+                                          `cmd=state`: `omcicli state` (ONU state,
+                                          MIB data sync, dropped frames and, from
+                                          an omcid with it, the `mib resets` line:
+                                          OLT and local resets, OLT resets in the
+                                          window, whether that is a loop). odi-oss
+                                          only: 400 without /proc/odi_gpon/status,
+                                          nothing run. The Status tab's link check
+                                          reads it at most once a minute in O5
 
     GET  /api/voip                       the phone lines the OLT provisioned:
                                           {"raw": `omcicli voip`, "truncated", "ok"},
@@ -203,7 +211,14 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           absent when the file or line is: `cpu` (/proc/stat
                                           "cpu "), `mem_total` and `mem_avail` (/proc/meminfo
                                           "MemTotal:", "MemAvailable:"), `onu_id`
-                                          (/proc/odi_gpon/status "onu_id ", odi-oss),
+                                          (/proc/odi_gpon/status "onu_id ", odi-oss;
+                                          -1 for none), `alloc_ids` ("alloc_ids ",
+                                          odi-oss: the count, then each Alloc-ID the
+                                          OLT assigned), `o7_hold` ("o7_hold ",
+                                          odi-oss: "keep N held N"), `o3_o4`
+                                          ("onu_transitions O3 O4 ", odi-oss: how
+                                          often the ONU entered ranging since boot;
+                                          absent until it first did),
                                           `pon_id` (/proc/odi_gpon/status "pon_id ", odi-oss:
                                           what the OLT says of itself, "odn_class N
                                           reach_extender N tol N id HEX ms N"; absent
@@ -236,7 +251,15 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           "stratum","last_sync"} from /tmp/ntp-status
                                           (odi-oss; known events only, values digits,
                                           `.` and `-`)}
-    GET  /api/log                        kernel ring buffer, via klogctl
+    GET  /api/log                        the kernel ring buffer: {"raw": one <prio>message
+                                          per line, "truncated"}. From /dev/kmsg where the
+                                          kernel offers its records (odi-oss), which adds
+                                          "lines" ([{"p","us","msg"}], `us` the record time
+                                          in microseconds since boot), "synced" (ntpd has
+                                          set the clock: last_sync in /tmp/ntp-status) and
+                                          "uptime_us"/"now_us", the monotonic and wall
+                                          clocks read together; via klogctl otherwise
+                                          (stock), raw and truncated only
     POST /api/ping       host=<IPv4>      a literal a host can have (first number
                                           1-223, not 127, no leading zeros), no DNS
     GET  /api/l2                         `diag l2-table get entry address valid`

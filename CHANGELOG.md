@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Nijika UI: the odi-ui link check under Registration on Status > Statistics: `nijika.js` polls
+  it as `app.js` does on the odi-ui page (two omcicli runs at most once a minute, in O5, on
+  odi-oss). The System > Logs note says the kernel log is read from `/dev/kmsg`, with the time
+  of each line, on the odi-oss kernel.
 - Nijika Luna: System > Firmware Update offers Switch & Reboot on the partition that is not
   running, with nijika in the image (`/api/firmware` `nijika`): `action=swap` runs `nijika boot
   <p>`, which commits that partition in both environment copies, then reboots. A confirm asks
@@ -151,6 +155,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - README: a Nijika UI part ahead of odi-ui's own README: what the page offers, the classic
   NIJIKA pages beside it, screenshots in `docs/screenshot-nijika/` (the serial number and the
   MAC addresses are placeholders), where the Nijika files are and the credits.
+- Status: a link check under the registration ladder, stage by stage: light,
+  registered, OMCI with the OLT, services set up, traffic. Each stage shows
+  its evidence, and the first that fails gives one finding: no light; an OLT
+  that never ranges the stick since it stalled (the serial); one that ranges
+  it and drops it again (the PLOAM password), told apart by the driver's
+  O3 to O4 count, which catches the attempts a 15 s poll misses; ranging
+  that does not complete (O4); an O7 disable; a MIB reset loop; registered
+  and never provisioned; provisioned without a GEM port; services and no
+  byte on the fibre port. A
+  stage the image cannot report (the stock firmware) shows as unknown. The
+  setup wizard's live hint uses the same check. `web/linkcheck.js`, pure,
+  with its cases in `make check`. Refs #97.
+- API: `/api/omci?cmd=state` runs `omcicli state` on odi-oss (400 and nothing
+  run without /proc/odi_gpon/status), and `/api/status` adds `alloc_ids`,
+  `o7_hold` and `o3_o4` (the `onu_transitions O3 O4` count) from
+  /proc/odi_gpon/status. The MIB reset counts need an omcid
+  with the `mib resets` line (AndreZiviani/odi-oss#393).
 - Status: the transceiver bias current under Transceiver ("Bias current 14.1 mA", from the same
   diag run as the other readings, `pon get transceiver bias-current`), and how long the stick has
   been up under Stick ("Uptime 3 d 4 h 12 min", to the minute). The Stick block now shows on an
@@ -158,6 +179,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   whole seconds of /proc/uptime, a plain file read. Refs AndreZiviani/odi-oss#384.
 - System > Firmware Update: the image picker offers `.image` files too, the name Nijika Luna
   gives its image tarballs (`nijika-luna-<version>-dev.image`, `-distribution.image`).
+- Logs: every kernel log line has its time. On the odi-oss kernel confd reads `/dev/kmsg`
+  instead of `klogctl`, which carries each record's time since boot although the kernel prints
+  none (`CONFIG_PRINTK_TIME` is off). The page shows it as UTC once ntpd has set the clock, and as
+  seconds since boot before that, with the other in the tooltip. `/api/log` keeps `raw` and adds
+  `lines`, `synced`, `uptime_us` and `now_us`; on the stock kernel the route and the page are
+  unchanged. Refs AndreZiviani/odi-oss#389.
 
 ## v1.16.0 (2026-11-12)
 

@@ -12,7 +12,10 @@
 
 import { $, el, get, fail, wireTheme, wireHelp } from './dom.js';
 import { S, EDITS } from './state.js';
-import { renderStatus, lineFacts } from './status.js';
+import { renderStatus, renderLinkCheck, sections, lineFacts } from './status.js';
+import { parsePorts } from './flow.js';
+import { linkCheck, trackLink, omciState } from './linkcheck.js';
+import { parseOmci } from './omci.js';
 import { renderAll } from './config.js';
 import { save, refreshSaveBar, renderIdentitySwitch } from './save.js';
 import { renderFirmware, wireFirmware } from './firmware.js';
@@ -336,6 +339,44 @@ function brand() {
  * decides from it, and the Nijika page reads the same answer.
  */
 let TIMER = null;
+
+/*
+ * The link check under the ladder, as app.js draws it on the odi-ui page:
+ * its inputs beyond /api/status are what omcid says of itself and how many
+ * GEM ports the MIB holds, two omcicli runs, so at most once a minute and
+ * only on the odi-oss image (its /api/status has onu_id) in O5.
+ */
+const LINK = { T: null, omci: null, gem: undefined, at: 0 };
+const LINK_OMCI_MS = 60000;
+
+async function linkOmci(j, facts) {
+  if (j.onu_id === undefined || !facts || facts.state !== 'O5') {
+    LINK.omci = null;
+    LINK.gem = undefined;
+    return;
+  }
+  if (Date.now() - LINK.at < LINK_OMCI_MS) return;
+  LINK.at = Date.now();
+  try {
+    const s = await get('/api/omci?cmd=state');
+    LINK.omci = s.error ? null : omciState(s.raw);
+    const m = await get('/api/omci?cmd=me&me=268');
+    LINK.gem = m.ok === false || m.error ? undefined : parseOmci(m.raw || '').instances.length;
+  } catch (e) {
+    LINK.omci = null;
+    LINK.gem = undefined;
+  }
+}
+
+async function linkStatus(j) {
+  const facts = lineFacts(j.raw);
+  await linkOmci(j, facts);
+  const ports = parsePorts(sections(j.raw)['mib dump counter port all'] || '');
+  const { T, f } = trackLink(LINK.T, { facts, st: j, ports, omci: LINK.omci, gem: LINK.gem });
+  LINK.T = T;
+  renderLinkCheck(f ? linkCheck(f) : null);
+}
+
 /* One poll at a time: confd answers one request at a time, and a tab coming
    back to view must not start a second poll beside a running one. */
 let BUSY = false;
@@ -351,6 +392,7 @@ async function poll() {
     ctx.prev = ctx.status;
     ctx.status = st;
     renderStatus(j.raw, j.chip_temp, j);
+    await linkStatus(j);
     brand();
     if (PAGE && PAGE.update) PAGE.update(ctx);
     $('#err').hidden = true;

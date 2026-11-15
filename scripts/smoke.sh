@@ -31,9 +31,10 @@ if [ "${IN_CONTAINER:-0}" != 1 ]; then
 	# kernel would not hand over its log buffer" here while working fine on
 	# a stick -- a check that always fails teaches nothing. The container
 	# reads the host VM's ring buffer; the assertion is only that bytes came
-	# back, and nothing is written to it.
+	# back, and nothing is written to it. /dev/kmsg, read-only, for the same
+	# reason: it is how confd reads the log on the odi-oss kernel, with times.
 	IMAGE=$(scripts/toolchain-image.sh) || exit 1
-	docker run --rm --cap-add SYSLOG -v "$PWD":/src -w /src "$IMAGE" \
+	docker run --rm --cap-add SYSLOG --device /dev/kmsg:/dev/kmsg:r -v "$PWD":/src -w /src "$IMAGE" \
 		env IN_CONTAINER=1 scripts/smoke.sh
 	exit $?
 fi
@@ -1495,8 +1496,32 @@ check "the kernel log comes back" yes \
 	"$(err "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log")" '"truncated"')"
 check "and it is not empty" yes \
 	"$([ "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log" | wc -c)" -gt 200 ] && echo yes || echo no)"
+# The clocks at the end of the answer move between two reads; the log does not.
+logbody() { curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log" | sed 's/,"synced":.*$//'; }
 check "reading it twice gives the same buffer" yes \
-	"$([ "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log")" = "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log")" ] && echo yes || echo no)"
+	"$([ "$(logbody)" = "$(logbody)" ] && echo yes || echo no)"
+# /dev/kmsg is there when the container was given it (the docker run above),
+# and then the log comes as records with their times; without it, klogctl as
+# on a stock kernel. Either way nothing is written to the kernel log.
+if [ -c /dev/kmsg ]; then
+	# A regular expression rather than err: the numbers differ on every host.
+	re() { printf '%s' "$1" | grep -Eq "$2" && echo yes || echo "no: $(printf '%s' "$1" | cut -c1-300)"; }
+	check "/dev/kmsg: each record with its time since boot" yes \
+		"$(re "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log")" '"lines":\[\{"p":[0-9]+,"us":[0-9]+,"msg":"')"
+	check "and the two clocks the page dates them with" yes \
+		"$(re "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log")" '"uptime_us":[1-9][0-9]*,"now_us":[1-9][0-9]{15}\}$')"
+	check "raw keeps the <prio> lines" yes \
+		"$(re "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log")" '^\{"raw":"<[0-9]+>')"
+	check "not synced without an NTP status" yes \
+		"$(err "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log")" '"synced":false')"
+	printf 'event=unsync\ntime=1763200000\noffset=\nstratum=16\nlast_sync=1763190000\n' > /tmp/ntp-status
+	check "synced once ntpd has set the clock, even after an unsync" yes \
+		"$(err "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log")" '"synced":true')"
+	printf 'event=unsync\ntime=1763200000\noffset=\nstratum=16\nlast_sync=\n' > /tmp/ntp-status
+	check "and not before the first sync" yes \
+		"$(err "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/log")" '"synced":false')"
+	rm -f /tmp/ntp-status
+fi
 
 echo "== the switch MAC table"
 # Its own route, not another line in the status scrape: the status buffer is
@@ -1565,6 +1590,13 @@ check "and the reason says why" yes \
 	"$(err "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/omci?cmd=tables")" 'wedges the MIB service')"
 check "an allowlisted dump is read" yes \
 	"$(err "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/omci?cmd=dump&what=srvflow")" 'ARGV: dump srvflow')"
+# `omcicli state` is a verb of the odi-oss omcid; this container has no
+# /proc/odi_gpon/status, as a stock slot has none, so it is refused before
+# anything runs, and the link check leaves the stages that need it unknown.
+check "state is refused without the odi-oss driver" 400 \
+	"$(code -u "$AUTH" "http://127.0.0.1:$PORT/api/omci?cmd=state")"
+check "and says why" yes \
+	"$(err "$(curl -s -u "$AUTH" "http://127.0.0.1:$PORT/api/omci?cmd=state")" 'needs the odi-oss omcid')"
 
 for bad in 'cmd=me&me=84;reboot' 'cmd=me&me=../../etc/passwd' 'cmd=me&me=-rf' \
            'cmd=me&me=84%20171' 'cmd=me' 'cmd=dump&what=conn;id' 'cmd=dump' \
