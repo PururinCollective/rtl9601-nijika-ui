@@ -57,6 +57,17 @@
  * from the environment; odi-oss only, absent on a stock-based image. */
 #define SLOT_STATE_SCRIPT "/etc/scripts/slot-state.sh"
 /*
+ * Nijika Luna. services starts and stops one daemon at once (telnetd here,
+ * with its flag); root-password.sh gives root the password of this page on
+ * an image built for it (/etc/odi-root-ui) and does nothing on any other.
+ * busybox telnetd is in an image that runs it; ROOT_UI_MARK is written by
+ * the image build.
+ */
+#define SERVICES_SCRIPT  "/etc/init.d/services"
+#define ROOT_PW_SCRIPT   "/etc/scripts/root-password.sh"
+#define TELNETD_PATH     "/sbin/telnetd"
+#define ROOT_UI_MARK     "/etc/odi-root-ui"
+/*
  * What fwu_starter.sh leaves behind on an image that writes in the background
  * (odi-oss): the state, "running|ok|failed <pid> <slot> [rc]", and the flasher's
  * own output. /api/firmware reports both so the page can follow a write
@@ -200,6 +211,10 @@
 				   * 8 KB environment partition, each read back */
 #define SLOT_STATE_TIMEOUT_MS 12000 /* slot-state.sh: two nv reads, 10 s each at
 				   * the very worst; milliseconds in practice */
+#define SERVICES_TIMEOUT_MS 10000  /* services start|stop: one walk of /proc
+				    * and a kill; well under a second */
+#define ROOT_PW_TIMEOUT_MS  10000  /* root-password.sh: cryptpw about 0.2 s,
+				    * one mount under its own 5 s timeout */
 #define DIAG_BUNDLE_TIMEOUT_MS 60000 /* diag-bundle.sh: about 20 steps of
 				   * busybox timeout 5 s each plus a 10 s
 				   * exporter scrape at worst; seconds in
@@ -223,11 +238,17 @@
  *                      check runs in the browser, never on the stick; the
  *                      file is only where "off" is kept, so it applies to
  *                      every browser. Absent (the default) means on.
+ *   telnetd.on         Nijika Luna: run busybox telnetd, the fallback way
+ *                      in (svc-telnetd.sh in the image). Absent (the
+ *                      default) means off. Set and cleared through
+ *                      SERVICES_SCRIPT, which also starts or stops telnetd
+ *                      at once.
  */
 #define SWITCH_DIR   "/etc/config/"
 #define SWITCH_OMCI_IDENTITY "omci-identity.on"
 #define SWITCH_CONFD_SETUP   "confd.setup"
 #define SWITCH_UPDATE_OFF    "update-check.off"
+#define SWITCH_TELNETD_ON    "telnetd.on"
 
 /*
  * Two development files odi-oss reads at boot, reported to the Firmware tab

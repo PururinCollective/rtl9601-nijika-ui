@@ -486,7 +486,15 @@ void emit_firmware_body(int fd)
 	put_fd(fd, file_exists(SWITCH_DIR SWITCH_CONFD_SETUP) ? "true" : "false");
 	put_fd(fd, ",\"" SWITCH_UPDATE_OFF "\":");
 	put_fd(fd, file_exists(SWITCH_DIR SWITCH_UPDATE_OFF) ? "true" : "false");
-	put_fd(fd, "},\"lanip_override\":");
+	put_fd(fd, ",\"" SWITCH_TELNETD_ON "\":");
+	put_fd(fd, file_exists(SWITCH_DIR SWITCH_TELNETD_ON) ? "true" : "false");
+	/* Nijika Luna: whether the image has telnetd at all, and whether root
+	 * has the password of this page (root-password.sh). */
+	put_fd(fd, "},\"telnetd\":");
+	put_fd(fd, file_exists(TELNETD_PATH) ? "true" : "false");
+	put_fd(fd, ",\"rootui\":");
+	put_fd(fd, file_exists(ROOT_UI_MARK) ? "true" : "false");
+	put_fd(fd, ",\"lanip_override\":");
 	put_fd(fd, file_exists(LANIP_OVERRIDE) ? "true" : "false");
 	emit_dev_files(fd);
 

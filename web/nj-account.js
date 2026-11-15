@@ -3,9 +3,11 @@
  * and System > Backup & Reset. The functions are odi-ui app.js own, carried
  * here as they are: app.js wires the odi-ui page and runs on import, so the
  * Nijika page cannot import it. Keep them in step with app.js on a merge.
+ * The telnet switch and the note on whom the password signs in are Nijika
+ * Luna own (renderAccess).
  */
 
-import { $, el, get } from './dom.js';
+import { $, el, get, createHelpToggle } from './dom.js';
 import { S } from './state.js';
 import { renderAll } from './config.js';
 import { renderTrial } from './firmware.js';
@@ -20,6 +22,73 @@ function showAuth(loud) {
   const on = !!(S.FW && S.FW.defaultauth);
   $('#defaultauth').hidden = !on || !LOUD;
   $('#authchip').hidden = !on || LOUD;
+  renderAccess();
+}
+
+/*
+ * Nijika Luna. On an image built with ROOT_PW=ui (S.FW.rootui), the password
+ * of this page is root's too, for SSH, telnet and the serial console
+ * (root-password.sh in the image, run again by confd on a change). And the
+ * telnet switch, /etc/config/telnetd.on, on an image that has telnetd
+ * (S.FW.telnetd): confd starts or stops it at once.
+ */
+const TELNET_SWITCH = 'telnetd.on';
+
+function renderAccess() {
+  const fw = S.FW || {};
+  const scope = $('#pw-scope');
+  if (scope) {
+    scope.textContent = fw.rootui
+      ? 'Signs you in to this page, and is the root password for SSH, telnet and the '
+        + 'serial console: admin until one is set here. Nothing the OLT sees.'
+      : 'Signs you in to this page only: not SSH, and nothing the OLT sees.';
+  }
+  const sec = $('#nj-telnet');
+  if (!sec) return;
+  sec.hidden = !fw.telnetd;
+  if (!fw.telnetd) return;
+  const host = $('#telnet-switch');
+  host.textContent = '';
+  const on = !!(fw.switches && fw.switches[TELNET_SWITCH]);
+  const titleText = on ? 'Telnet is on' : 'Telnet is off';
+  const helpBox = el('div', 's-helpbox');
+  helpBox.id = 'help-telnet-switch';
+  helpBox.append(el('p', 's-help', 'root logs in with '
+    + (fw.rootui ? 'the password of this page' : 'its password')
+    + ', as over SSH, and gets the same shell.'));
+  helpBox.append(el('p', 's-help', 'Telnet sends the password in the clear. Use SSH, and turn '
+    + 'this on only when SSH cannot reach the stick, then off again. The setting is kept '
+    + 'in /etc/config/telnetd.on and survives a reflash.'));
+  const title = el('div', 's-title');
+  title.append(el('strong', 's-name', titleText), createHelpToggle(helpBox, titleText));
+  const text = el('div', 'switch-text');
+  text.append(title, helpBox);
+  const b = el('button', null, on ? 'Turn telnet off' : 'Turn telnet on');
+  b.type = 'button';
+  b.onclick = async () => {
+    b.disabled = true;
+    const out = $('#telnet-out');
+    out.textContent = '';
+    try {
+      const r = await fetch('/api/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ name: TELNET_SWITCH, on: on ? '0' : '1' }).toString(),
+      });
+      const j = await r.json();
+      if (!j.ok) { out.append(el('div', 'bad', j.error || 'refused')); return; }
+      S.FW.switches = { ...(S.FW.switches || {}), [TELNET_SWITCH]: j.on };
+      renderAccess();
+      out.append(el('div', j.on ? 'warn' : 'good', j.on
+        ? 'Telnet is on, port 23: telnet ' + location.hostname + '. Turn it off again when you are done.'
+        : 'Telnet is off.'));
+    } catch (e) {
+      out.append(el('div', 'bad', String(e.message || e)));
+    } finally { b.disabled = false; }
+  };
+  const acts = el('div', 'switch-acts');
+  acts.append(b);
+  host.append(text, acts);
 }
 
 /*

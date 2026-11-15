@@ -87,6 +87,27 @@ assert fw_old in system_subs
 # its image tarballs (nijika-luna-<version>-dev.image, -oem.image).
 system_subs=system_subs.replace(fw_old, 'accept=".image,.tar,application/x-tar"')
 
+# Nijika: whom the password of this page signs in. On a Nijika Luna image
+# whose root has it (ROOT_PW=ui), nj-account.js says so here.
+pw_old='<p class="help">Signs you in to this page only: not SSH, and nothing the OLT sees.</p>'
+assert pw_old in system_subs
+system_subs=system_subs.replace(pw_old, pw_old.replace('<p class="help">', '<p class="help" id="pw-scope">'))
+
+# Nijika: the telnet switch of Nijika Luna, under the SSH keys
+# (nj-account.js). Hidden on an image without telnetd.
+telnet_old='''        <div id="sshkey-out"></div>
+      </section>
+'''
+assert telnet_old in system_subs
+system_subs=system_subs.replace(telnet_old, telnet_old+'''
+      <section class="block" id="nj-telnet" hidden>
+        <h2>Telnet</h2>
+        <p class="help">A fallback way in beside SSH, on port 23. Off unless you turn it on.</p>
+        <div id="telnet-switch" class="switchrow"></div>
+        <div id="telnet-out"></div>
+      </section>
+''')
+
 vlan_old='''      <div class="settings" id="set-vlan"></div>
 '''
 assert vlan_old in config_subs

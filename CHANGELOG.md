@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Nijika Luna: a telnet switch under System > Management > SSH keys, on an image that has
+  telnetd (`/api/firmware` `telnetd`): `/api/switch name=telnetd.on`, which confd applies through
+  `/etc/init.d/services start|stop telnetd`, so telnetd starts or stops at once. Off by default.
+- Nijika Luna: on an image whose root has the password of this page (`ROOT_PW=ui`,
+  `/api/firmware` `rootui`), a password change also runs `/etc/scripts/root-password.sh`, and
+  the page says the password is root's for SSH, telnet and the serial console.
 - Nijika UI (rtl9601-nijika-ui): a LuCI-style page at `/` over the odi-ui modules, with a top bar
   of drop-down menus in the classic Nijika page tree, white cards on a grey canvas, a content
   column capped at 1180 px, light and dark themes (the odi-ui theme key) and a menu panel on a

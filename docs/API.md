@@ -88,12 +88,17 @@ every session but the one that made it.
                                           restarts omci_app
     POST /api/switch    name=...&on=0|1  create or remove one allowlisted switch file:
                                           `omci-identity.on`; `confd.setup`, the setup
-                                          wizard marker below; and `update-check.off`
+                                          wizard marker below; `update-check.off`
                                           (present means the page does not look for
                                           new odi-oss releases, for every browser; the
                                           look itself is made by the browser, the stick
-                                          contacts nothing). `/api/firmware` reports
-                                          all three under `switches`
+                                          contacts nothing); and, for Nijika Luna,
+                                          `telnetd.on` (telnetd runs while present; set
+                                          through `/etc/init.d/services start|stop
+                                          telnetd`, which starts or stops it at once).
+                                          `/api/firmware` reports all four under
+                                          `switches`, and `telnetd` (the image has
+                                          `/sbin/telnetd`) beside them
 
 The page's data files, each a TSV from `/etc/confd/` (or its override in
 `/etc/config/confd/`) served as a JSON array of objects, one per row:
@@ -374,7 +379,7 @@ completed or skipped. It is the switch file `/etc/config/confd.setup`, next to
 `confd.auth`, owned by confd and read by nothing in the image, so every browser
 agrees and no odi-oss key is involved.
 
-    GET  /api/firmware                   `"switches":{"omci-identity.on":false,"confd.setup":false,"update-check.off":false}`
+    GET  /api/firmware                   `"switches":{"omci-identity.on":false,"confd.setup":false,"update-check.off":false,"telnetd.on":false}`
     POST /api/switch  name=confd.setup&on=1|0
                                           create or remove it; `{"ok":true,"on":true}`.
                                           400 for `on` other than 0 or 1 or a name not
@@ -417,7 +422,13 @@ backup go through `/api/netaddr` instead when the image has the trial.
     POST /api/password   user=...&password=...
                                           user 1-64 printable characters, no space or
                                           colon; password 4-128 printable ASCII. Ends
-                                          every session but the one that made the change
+                                          every session but the one that made the change.
+                                          On a Nijika Luna image built with ROOT_PW=ui
+                                          (`/etc/odi-root-ui`, reported as `rootui` by
+                                          `/api/firmware`) it then runs
+                                          `/etc/scripts/root-password.sh`, which gives
+                                          root the new password for SSH, telnet and the
+                                          serial console
     GET  /api/sshkeys                     {"path":..., "keys":[{"i":0,"line":"ssh-ed25519 AAAA... comment"}]}
     POST /api/sshkeys    key=<line>       append; the type is one of ssh-ed25519,
                                           ssh-rsa, ecdsa-sha2-nistp256/384/521 or an

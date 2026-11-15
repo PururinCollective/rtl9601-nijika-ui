@@ -1530,6 +1530,17 @@ void serve(int conn)
 		/* Whoever signed in with the old password is signed out; the
 		 * browser that made the change stays signed in. */
 		session_end_others();
+		/* Nijika Luna: on an image whose root has the password of this
+		 * page, give root the new one now. The script does nothing on
+		 * any other image; its result does not undo the save. */
+		{
+			static char *const argv[] = { "root-password.sh", 0 };
+			char buf[256];
+			long code = -1;
+
+			run_to_buf_ex(ROOT_PW_SCRIPT, argv, buf, sizeof(buf), &code,
+				      ROOT_PW_TIMEOUT_MS);
+		}
 		respond(conn, "200 OK", "application/json", 0);
 		put_fd(conn, "{\"ok\":true,\"note\":\"saved -- every other browser signed in to this page is signed out\"}");
 		return;
@@ -2181,6 +2192,7 @@ void serve(int conn)
 		static const char p_identity[] = SWITCH_DIR SWITCH_OMCI_IDENTITY;
 		static const char p_setup[] = SWITCH_DIR SWITCH_CONFD_SETUP;
 		static const char p_update[] = SWITCH_DIR SWITCH_UPDATE_OFF;
+		static const char p_telnetd[] = SWITCH_DIR SWITCH_TELNETD_ON;
 		const char *target = 0;
 
 		form_get(body, "name", name, sizeof(name));
@@ -2196,12 +2208,31 @@ void serve(int conn)
 			target = p_setup;
 		else if (seq(name, SWITCH_UPDATE_OFF))
 			target = p_update;
+		else if (seq(name, SWITCH_TELNETD_ON))
+			target = p_telnetd;
 		if (!target) {
 			respond(conn, "400 Bad Request", "application/json", 0);
 			put_fd(conn, "{\"ok\":false,\"error\":\"not a switch this UI sets\"}");
 			return;
 		}
-		if (seq(on, "1"))
+		if (target == p_telnetd) {
+			/* services writes or removes the flag itself and starts
+			 * or stops telnetd now, rather than at the next boot.
+			 * Where it cannot run, the flag alone still applies from
+			 * the next boot. */
+			char *const argv[] = { "services", seq(on, "1") ? "start" : "stop",
+					       "telnetd", 0 };
+			char buf[256];
+			long code = -1;
+
+			if (run_to_buf_ex(SERVICES_SCRIPT, argv, buf, sizeof(buf), &code,
+					  SERVICES_TIMEOUT_MS) < 0 || code != 0) {
+				if (seq(on, "1"))
+					write_file(target, "", 0, 0644);
+				else
+					syscall3(__NR_unlink, (long)target, 0, 0);
+			}
+		} else if (seq(on, "1"))
 			write_file(target, "", 0, 0644);
 		else
 			syscall3(__NR_unlink, (long)target, 0, 0);

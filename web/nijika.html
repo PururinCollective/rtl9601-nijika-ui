@@ -511,7 +511,7 @@
                  autocomplete="new-password" placeholder="the same password" maxlength="128"></label>
           <button id="pw-save" class="primary" type="button">Save password</button>
         </div>
-        <p class="help">Signs you in to this page only: not SSH, and nothing the OLT sees.</p>
+        <p class="help" id="pw-scope">Signs you in to this page only: not SSH, and nothing the OLT sees.</p>
         <details class="more">
           <summary>Where it is kept, and what erases it</summary>
           <p>In <code>/etc/config/confd.auth</code>, which is created here if it
@@ -564,6 +564,13 @@
              every login, so nothing restarts.</p>
         </details>
         <div id="sshkey-out"></div>
+      </section>
+
+      <section class="block" id="nj-telnet" hidden>
+        <h2>Telnet</h2>
+        <p class="help">A fallback way in beside SSH, on port 23. Off unless you turn it on.</p>
+        <div id="telnet-switch" class="switchrow"></div>
+        <div id="telnet-out"></div>
       </section>
     </div>
 
