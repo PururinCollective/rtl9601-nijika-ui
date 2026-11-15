@@ -164,7 +164,7 @@ eq(isp1.lanes.map((l) => [l.uni, l.router, l.action, l.olt, !!l.blocked]),
   [['PPTP 0x0101', 'untagged', '+ tag', 'VLAN 1', true], ['multicast', 'as sent', 'as is', 'multicast', false]],
   'ISP1: one lane on the UNI, held by the fibre-side filter, and multicast');
 eq(isp1.lanes[0].gems.some((g) => g.gem === 1027 && g.alloc === 1024), true, 'ISP1: GEM port and T-CONT through the mapper');
-eq(isp1.fallbacks.includes('Any other VLAN is dropped: PPTP 0x0101, VEIP 0x0601.'), true,
+eq(isp1.fallbacks.includes('Other VLANs are dropped: PPTP 0x0101, VEIP 0x0601.'), true,
   'ISP1: the default rules, once, with the UNIs they are on');
 const man = SV.serviceMap(svcMib, { on: true, vid: 110 });
 eq(man.lanes.filter((l) => l.kind !== 'MCAST').map((l) => [l.uni, l.router, l.action, l.olt]),
@@ -174,7 +174,7 @@ eq(SV.routerNeeds(man), ['untagged'], 'manual VLAN: the router sends untagged');
 const hgu47 = parseOmci(['47 MacBriPortCfgData 9', '    BridgeIdPtr              0002', '    TPType                   01',
   '    TPPointer                0102', '1 rows', ''].join('\n'));
 const hgu = SV.serviceMap({ 47: hgu47 }, { on: false });
-eq([hgu.lanes.length, hgu.fallbacks.some((f) => /^LAN port 2 of the HGU layout/.test(f))], [0, true],
+eq([hgu.lanes.length, hgu.fallbacks.some((f) => /^LAN port 2 \(PPTP /.test(f))], [0, true],
   'an HGU LAN port the stick does not have is a footnote, not a lane');
 // A line with the same VLAN on the PPTP and the VEIP bridge, the GEM port of each VLAN through its mapper port.
 const two47 = parseOmci(['47 MacBriPortCfgData 257', '    BridgeIdPtr              0101', '    TPType                   01', '    TPPointer                0101',

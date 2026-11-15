@@ -66,6 +66,9 @@
 #define SERVICES_SCRIPT  "/etc/init.d/services"
 #define ROOT_PW_SCRIPT   "/etc/scripts/root-password.sh"
 #define TELNETD_PATH     "/sbin/telnetd"
+/* nijika boot <p>: commits partition p in both environment copies, and
+ * refuses one without a kernel the bootloader would boot. */
+#define NIJIKA_PATH      "/bin/nijika"
 #define ROOT_UI_MARK     "/etc/odi-root-ui"
 /*
  * What fwu_starter.sh leaves behind on an image that writes in the background
@@ -215,6 +218,9 @@
 				    * and a kill; well under a second */
 #define ROOT_PW_TIMEOUT_MS  10000  /* root-password.sh: cryptpw about 0.2 s,
 				    * one mount under its own 5 s timeout */
+#define NIJIKA_BOOT_TIMEOUT_MS 30000 /* nijika boot <p>: up to five nv setenv,
+				      * each an erase and write of an 8 KB
+				      * environment partition */
 #define DIAG_BUNDLE_TIMEOUT_MS 60000 /* diag-bundle.sh: about 20 steps of
 				   * busybox timeout 5 s each plus a 10 s
 				   * exporter scrape at worst; seconds in

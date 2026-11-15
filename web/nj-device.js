@@ -108,8 +108,8 @@ function lightBar([lo, hi]) {
     if (text) m.append(el('span', null, text));
     marks.append(m);
   }
-  box.title = `Class B+ receive window: ${signed(lo, 0)} dBm (sensitivity) to ${signed(hi, 0)} dBm (overload). `
-    + 'Yellow: the outer 16 % at each end, near the edge.';
+  box.title = `Class B+ RX range: ${signed(lo, 0)} dBm (sensitivity) to ${signed(hi, 0)} dBm (overload). `
+    + 'Yellow: within 16 % of a limit.';
   box.append(track, marks);
   return {
     el: box,
@@ -194,8 +194,8 @@ const speed = (bps) => (bps === null || bps === undefined ? 0.5
 
 function drawStick(model) {
   const s = svg('svg', { viewBox: '0 0 320 128', class: 'nj-stick', role: 'img' });
-  s.append(svg('title', {}, 'The light arriving (1490 nm, down) and the laser answering (1310 nm, up). '
-    + 'The colours and the speed are symbolic: both are infrared, and the speed follows the traffic.'));
+  s.append(svg('title', {}, 'Downstream 1490 nm, upstream 1310 nm. '
+    + 'Colour and speed are for display only.'));
   s.append(svg('line', { class: 'jacket', x1: -6, y1: FY, x2: 40, y2: FY }));
   s.append(svg('line', { class: 'core', x1: -6, y1: FY, x2: 66, y2: FY }));
   s.append(svg('rect', { class: 'conn', x: 32, y: FY - 14, width: 34, height: 28, rx: 4 }));
@@ -286,7 +286,7 @@ function renderDevice(host) {
   /* The VLANs get the rest of the box, as tall as the SFP one beside it. */
   const vl = el('div', 'nj-vlans');
   const vlHead = el('div', 'nj-vlans-head');
-  vlHead.append(el('span', null, 'VLANs'), el('small', null, 'what the OLT lets through, and to which side'));
+  vlHead.append(el('span', null, 'VLANs'), el('small', null, 'VLANs allowed by the OLT'));
   const vlBody = el('div', 'nj-vlans-body');
   vlBody.append(el('p', 'hint', DASH));
   vl.append(vlHead, vlBody);
@@ -299,7 +299,7 @@ function renderDevice(host) {
   const grid = el('div', 'pon-stats');
   const P = { state: stat('State', 'Operation state'), rx: stat('Light in', '1490 nm, downstream'),
     tx: stat('Laser out', '1310 nm, upstream'), temp: stat('Temperature', 'module'),
-    traffic: stat('Traffic', 'live, from the port counters') };
+    traffic: stat('Traffic', 'from port counters') };
   const light = lightBar(WINDOW.rx);
   P.rx.box.classList.add('stat-light');
   P.rx.box.insertBefore(light.el, P.rx.box.lastChild);
@@ -343,7 +343,7 @@ function renderDevice(host) {
   O.cells.mac.textContent = macText(vals.ELAN_MAC_ADDR) || DASH;
   O.cells.sn.textContent = serialText(vals.GPON_SN) || DASH;
 
-  const hood = el('a', null, 'Under the hood');
+  const hood = el('a', null, 'Statistics');
   hood.href = '#status/hood';
   foot.append(el('span', null, firmware || 'Nijika Luna'), el('span', 'sep', '·'), hood,
     el('span', 'sep', '·'), el('span', null, 'Active image: ' + (active === undefined ? DASH : active)));
@@ -380,13 +380,13 @@ function renderDevice(host) {
     line = 'reading';
     O.cells.olt.textContent = 'reading…';
     vlBody.textContent = '';
-    vlBody.append(el('p', 'hint', 'Reading the MIB…'));
+    vlBody.append(el('p', 'hint', 'Reading MIB, please wait ...'));
     const r = await readLine();
     line = r;
     O.cells.olt.textContent = r.olt || DASH;
     vlBody.textContent = '';
     if (!r.vlans.length) {
-      vlBody.append(el('p', 'hint', r.ok ? 'None provisioned: the OLT set no VLAN filter.' : 'The MIB could not be read.'));
+      vlBody.append(el('p', 'hint', r.ok ? 'No VLAN filter provisioned by the OLT.' : 'Failed to read MIB.'));
       return;
     }
     const ul = el('ul', 'vlans');
@@ -436,11 +436,11 @@ function renderDevice(host) {
     const inService = st.state === 'O5';
     P.state.set(st.state ? `${st.state} (${STATE_NAMES[st.state] || '?'})` : null,
       !st.state ? 'none' : inService ? 'good' : 'bad',
-      !st.state ? 'No state reported' : inService ? 'Registered and carrying traffic' : 'Not yet operational');
+      !st.state ? 'No state' : inService ? 'In service' : 'Not in service');
     const vr = st.los ? 'bad' : verdict(st.rx, WINDOW.rx);
     P.rx.set(st.rx === null ? null : signed(st.rx, 1) + ' dBm', vr,
-      '1490 nm, downstream' + (st.los ? ', loss of signal' : vr === 'good' ? ', in the B+ window'
-        : vr === 'warn' ? ', near the edge' : vr === 'bad' ? ', out of the window' : ''));
+      '1490 nm, downstream' + (st.los ? ', loss of signal' : vr === 'good' ? ', in B+ range'
+        : vr === 'warn' ? ', near limit' : vr === 'bad' ? ', out of range' : ''));
     light.set(st.los ? null : st.rx, vr);
     P.tx.set(st.tx === null ? null : signed(st.tx, 1) + ' dBm', verdict(st.tx, WINDOW.tx));
     const hasChip = st.chip && typeof st.chip.celsius === 'number';
@@ -469,11 +469,11 @@ function renderDevice(host) {
       const load = inService ? ponLoad(prevPon, sample) : null;
       fill.style.width = load ? Math.max(0.5, load.pct).toFixed(1) + '%' : '0';
       fill.className = 'nj-bar-fill ' + (!load ? '' : load.pct >= 80 ? 'bad' : load.pct >= 50 ? 'warn' : 'good');
-      sharedNote.textContent = !inService ? 'No downstream outside O5.'
-        : !load ? 'Measuring…'
-        : `≈ ${load.pct < 10 ? load.pct.toFixed(1) : load.pct.toFixed(0)}% of the downstream in use: `
-          + `≈ ${load.mbps < 100 ? load.mbps.toFixed(1) : load.mbps.toFixed(0)} of ${load.of.toFixed(0)} Mbit/s `
-          + 'sent to all ONUs on this fibre.';
+      sharedNote.textContent = !inService ? 'Available in O5 only.'
+        : !load ? 'Measuring ...'
+        : `Downstream usage ≈ ${load.pct < 10 ? load.pct.toFixed(1) : load.pct.toFixed(0)}% `
+          + `(≈ ${load.mbps < 100 ? load.mbps.toFixed(1) : load.mbps.toFixed(0)} of ${load.of.toFixed(0)} Mbit/s, `
+          + 'all ONUs on this PON).';
     }
     prevPon = sample;
 
@@ -481,7 +481,7 @@ function renderDevice(host) {
     if (!inService && line === null) {
       O.cells.olt.textContent = DASH;
       vlBody.textContent = '';
-      vlBody.append(el('p', 'hint', 'Not in service: the OLT has provisioned nothing yet.'));
+      vlBody.append(el('p', 'hint', 'Not in service. Nothing provisioned by the OLT.'));
     }
   }
 

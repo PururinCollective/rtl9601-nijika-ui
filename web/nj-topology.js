@@ -35,7 +35,7 @@ import { attrOf, num, idOf, hex4, fields, rulesOf, ruleLane } from './nj-service
 const NONE = 0xffff;
 const COLS = ['tcont', 'gem', 'mapper', 'aport', 'bridge', 'uport', 'uni'];
 const HEADS = { tcont: 'T-CONTs', gem: 'GEM ports', mapper: '802.1p mappers', aport: 'Bridge ports',
-  bridge: 'Bridges', uport: 'Bridge ports', uni: 'This stick’s ports' };
+  bridge: 'Bridges', uport: 'Bridge ports', uni: 'UNI ports' };
 const DIR = { 1: 'upstream', 2: 'downstream', 3: 'both ways' };
 const POLICY = { 0: 'no policy', 1: 'strict priority', 2: 'WRR' };
 const IWOPT = { 0: 'circuit', 1: 'MAC bridge', 4: 'video', 5: 'mapper', 6: 'broadcast', 7: 'MPLS' };
@@ -77,10 +77,10 @@ function topology(mib, queues = new Map()) {
   };
   /* A pointer to an entity the MIB has not. */
   const ghost = (cls, inst, col) => add({ id: `ghost:${cls}/${inst}`, col, ghost: true, origin: 'none',
-    title: hex4(inst), sub: `class ${cls}: not in the MIB`, tip: 'Something points here, and the MIB has no such entity.' }).id;
+    title: hex4(inst), sub: `class ${cls}: not in the MIB`, tip: 'Referenced, but not in the MIB.' }).id;
   const has = (cls, inst, col) => (nodes.has(`${cls}/${inst}`) ? `${cls}/${inst}` : ghost(cls, inst, col));
 
-  add({ id: 'fibre', col: 'fibre', bar: true, origin: 'olt', title: 'Fibre', tip: 'The PON, towards the OLT.' });
+  add({ id: 'fibre', col: 'fibre', bar: true, origin: 'olt', title: 'Fibre', tip: 'PON interface to the OLT.' });
 
   /* T-CONTs: the ones with an Alloc-ID or a GEM port each a box, the rest
      folded into one. */
@@ -93,7 +93,7 @@ function topology(mib, queues = new Map()) {
     if (!set && !pointed.has(id)) { unused++; continue; }
     add({ id: `262/${id}`, col: 'tcont', origin: 'onu', title: set ? `Alloc-ID ${alloc}` : 'T-CONT',
       sub: `${hex4(id)} · ${set ? (POLICY[v(t, 'Policy')] || '—') : 'no Alloc-ID'}`,
-      tip: 'T-CONT: the upstream bandwidth the OLT gives.' });
+      tip: 'T-CONT: upstream bandwidth allocated by the OLT.' });
     link('fibre', `262/${id}`);
   }
 
@@ -103,7 +103,7 @@ function topology(mib, queues = new Map()) {
     const tc = v(g, 'TcAdapterPtr');
     add({ id, col: 'gem', origin: 'olt', title: `GEM ${port === null ? '—' : port}`,
       sub: `${hex4(idOf(g))} · ${DIR[v(g, 'Direction')] || '—'}`,
-      tip: 'GEM port: one stream of the PON.' + (isSet(tc) ? '' : ' No T-CONT: it only comes down.') });
+      tip: 'GEM port.' + (isSet(tc) ? '' : ' No T-CONT: downstream only.') });
     if (!isSet(tc)) { link('fibre', id); continue; }
     const host = has(262, tc, 'tcont');
     link(host, id);
@@ -111,7 +111,7 @@ function topology(mib, queues = new Map()) {
     const qq = queues.get(q);
     if (isSet(q)) {
       nodes.get(host).chips.push({ text: `queue ${hex4(q)}` + (qq && qq.pri !== null ? ` · prio ${qq.pri}` : ''),
-        tip: `GEM ${port} goes up through this queue.` });
+        tip: `Upstream queue of GEM ${port}.` });
     }
   }
 
@@ -142,7 +142,7 @@ function topology(mib, queues = new Map()) {
     const one = ws.length === 1 ? nodes.get(viaIw('266', ws[0])) : null;
     add({ id, col: 'mapper', origin: 'olt', title: hex4(idOf(m)),
       sub: one ? `p-bits ${spans(by.get(ws[0]))} → ${one.title}` : ws.length ? `p-bits to ${ws.length} GEM ports` : 'no GEM port',
-      tip: '802.1p mapper: picks the GEM port by the priority bits.' });
+      tip: '802.1p mapper: selects the GEM port by priority bits.' });
     for (const w of ws) {
       const host = viaIw('266', w);
       link(host, id);
@@ -158,13 +158,13 @@ function topology(mib, queues = new Map()) {
     add({ id: `11/${me}`, col: 'uni', origin: 'onu', title: 'PPTP ' + hex4(me),
       sub: 'Ethernet · ' + (ADMIN[v(u, 'AdminState')] || '—'),
       /* The stick has one Ethernet port; the HGU layout adds 0x0102..0x0104. */
-      reaches: me === 0x0101, tip: me === 0x0101 ? 'The Ethernet port: the SFP edge to the router.'
-        : 'A LAN port of the HGU layout: the stick has one port, so nothing reaches it.' });
+      reaches: me === 0x0101, tip: me === 0x0101 ? 'Ethernet port (UNI) to the router.'
+        : 'LAN port provisioned by the OLT, not available (the ONU has one port).' });
   }
   for (const u of L('329')) {
     add({ id: `329/${idOf(u)}`, col: 'uni', origin: 'onu', title: 'VEIP ' + hex4(idOf(u)),
       sub: 'virtual port · ' + (ADMIN[v(u, 'AdminState')] || '—'), reaches: true,
-      tip: 'The virtual port: on this stick it reaches the router through the same SFP edge.' });
+      tip: 'Virtual port (VEIP), to the router through the same UNI.' });
   }
 
   const NAMES = { 1: 'PPTP', 3: 'mapper', 5: 'GEM IW', 6: 'multicast IW', 11: 'VEIP' };
@@ -218,7 +218,7 @@ function topology(mib, queues = new Map()) {
 
   if (unused) {
     add({ id: 'unused', col: 'tcont', origin: 'onu', unused: true, title: `${unused} unused`, sub: 'no GEM port here',
-      tip: 'T-CONTs of the stick that no GEM port points at.' });
+      tip: 'T-CONTs not used by any GEM port.' });
   }
 
   const model = { nodes, edges };
@@ -420,7 +420,7 @@ function paint() {
         box.append(chip);
       }
     }
-    box.title = [nd.title, nd.sub, nd.tip, nd.off ? 'Stored, not used: nothing of it reaches the router.' : '']
+    box.title = [nd.title, nd.sub, nd.tip, nd.off ? 'Provisioned, not used.' : '']
       .filter(Boolean).join('\n');
     box.addEventListener('click', (ev) => { ev.stopPropagation(); pick(PICK === id ? null : id); });
     box.addEventListener('keydown', (ev) => move(ev, id));
@@ -507,12 +507,12 @@ function wireView(view) {
 async function readTopology() {
   const status = HOST.querySelector('.nj-topo-status');
   M = null;
-  status.textContent = 'Reading the MIB…';
+  status.textContent = 'Reading MIB, please wait ...';
   paint();
   const mib = {};
   let ok = true;
   for (const c of CLASSES) {
-    status.textContent = `Reading class ${c}…`;
+    status.textContent = `Reading class ${c} ...`;
     mib[c] = await readMib(c);
     if (c === '47' || c === '268') ok = ok && mib[c].ok;
   }
@@ -529,8 +529,8 @@ async function readTopology() {
   }
   M = topology(mib, queues);
   READ_AT = new Date();
-  status.textContent = ok ? `Read at ${READ_AT.toLocaleTimeString()}.` : 'The MIB could not be read whole: what was read is drawn.';
-  if (![...M.nodes.values()].some((nd) => nd.col !== 'fibre')) status.textContent = 'The OLT has set up nothing yet.';
+  status.textContent = ok ? `Read at ${READ_AT.toLocaleTimeString()}.` : 'Failed to read the whole MIB. Partial result shown.';
+  if (![...M.nodes.values()].some((nd) => nd.col !== 'fibre')) status.textContent = 'Nothing provisioned by the OLT.';
   paint();
 }
 
@@ -540,9 +540,9 @@ function renderTopology() {
   if (!HOST) {
     HOST = host;
     const card = el('div', 'cbi-section nj-topo');
-    card.append(el('h3', null, 'From the fibre to the ports'));
+    card.append(el('h3', null, 'PON to UNI'));
     const bar = el('div', 'nj-topo-bar');
-    const again = el('button', 'nj-quick', 'Read now');
+    const again = el('button', 'nj-quick', 'Refresh');
     again.type = 'button';
     again.addEventListener('click', readTopology);
     bar.append(el('span', 'nj-topo-status nj-note'), again);
@@ -552,7 +552,7 @@ function renderTopology() {
     view.append(sizer);
     const tools = el('div', 'nj-topo-tools');
     for (const [t, label, f] of [['+', 'Zoom in', () => zoom(SCALE * 1.2)], ['−', 'Zoom out', () => zoom(SCALE / 1.2)],
-      ['⤢', 'Fit the width', () => zoom(LAY ? (view.clientWidth - 8) / LAY.width : 1)]]) {
+      ['⤢', 'Fit to width', () => zoom(LAY ? (view.clientWidth - 8) / LAY.width : 1)]]) {
       const b = el('button', 'nj-quick', t);
       b.type = 'button';
       b.title = label;
@@ -561,14 +561,14 @@ function renderTopology() {
       tools.append(b);
     }
     const legend = el('p', 'nj-topo-legend');
-    for (const [cls, text] of [['olt', 'created by the OLT'], ['onu', 'created by this stick'], ['off', 'stored, not used'],
-      ['ghost', 'a pointer to nothing']]) {
+    for (const [cls, text] of [['olt', 'created by OLT'], ['onu', 'created by ONU'], ['off', 'not used'],
+      ['ghost', 'missing entity']]) {
       const k = el('span', 'nj-key');
       k.append(el('i', 'nj-key-box ' + cls), document.createTextNode(text));
       legend.append(k);
     }
-    legend.append(el('span', 'nj-topo-hint', 'Click a box to trace its path. Drag to move, Ctrl + wheel or the buttons '
-      + 'to zoom; the arrow keys move between boxes.'));
+    legend.append(el('span', 'nj-topo-hint', 'Click an entity to show its path. Drag to move. Ctrl + wheel or the buttons '
+      + 'to zoom. Arrow keys to select.'));
     card.append(bar, view, tools, legend);
     host.append(card);
     wireView(view);

@@ -39,9 +39,9 @@ function renderAccess() {
   const scope = $('#pw-scope');
   if (scope) {
     scope.textContent = fw.rootui
-      ? 'Signs you in to this page, and is the root password for SSH, telnet and the '
-        + 'serial console: admin until one is set here. Nothing the OLT sees.'
-      : 'Signs you in to this page only: not SSH, and nothing the OLT sees.';
+      ? 'Password for this page, and the root password for SSH, Telnet and the serial '
+        + 'console. Default: admin.'
+      : 'Password for this page only. Not used for SSH.';
   }
   const sec = $('#nj-telnet');
   if (!sec) return;
@@ -50,20 +50,18 @@ function renderAccess() {
   const host = $('#telnet-switch');
   host.textContent = '';
   const on = !!(fw.switches && fw.switches[TELNET_SWITCH]);
-  const titleText = on ? 'Telnet is on' : 'Telnet is off';
+  const titleText = on ? 'Telnet: Enabled' : 'Telnet: Disabled';
   const helpBox = el('div', 's-helpbox');
   helpBox.id = 'help-telnet-switch';
-  helpBox.append(el('p', 's-help', 'root logs in with '
-    + (fw.rootui ? 'the password of this page' : 'its password')
-    + ', as over SSH, and gets the same shell.'));
-  helpBox.append(el('p', 's-help', 'Telnet sends the password in the clear. Use SSH, and turn '
-    + 'this on only when SSH cannot reach the stick, then off again. The setting is kept '
-    + 'in /etc/config/telnetd.on and survives a reflash.'));
+  helpBox.append(el('p', 's-help', 'Login: root, '
+    + (fw.rootui ? 'with the password of this page.' : 'with the root password.')));
+  helpBox.append(el('p', 's-help', 'Note: Telnet is not encrypted. Enable it only when SSH '
+    + 'is not available, and disable it after use. The setting is kept after a firmware upgrade.'));
   const title = el('div', 's-title');
   title.append(el('strong', 's-name', titleText), createHelpToggle(helpBox, titleText));
   const text = el('div', 'switch-text');
   text.append(title, helpBox);
-  const b = el('button', null, on ? 'Turn telnet off' : 'Turn telnet on');
+  const b = el('button', null, on ? 'Disable' : 'Enable');
   b.type = 'button';
   b.onclick = async () => {
     b.disabled = true;
@@ -80,8 +78,8 @@ function renderAccess() {
       S.FW.switches = { ...(S.FW.switches || {}), [TELNET_SWITCH]: j.on };
       renderAccess();
       out.append(el('div', j.on ? 'warn' : 'good', j.on
-        ? 'Telnet is on, port 23: telnet ' + location.hostname + '. Turn it off again when you are done.'
-        : 'Telnet is off.'));
+        ? 'Telnet enabled on port 23 (telnet ' + location.hostname + '). Disable it after use.'
+        : 'Telnet disabled.'));
     } catch (e) {
       out.append(el('div', 'bad', String(e.message || e)));
     } finally { b.disabled = false; }
@@ -133,11 +131,10 @@ async function savePassword() {
     });
     const j = await r.json();
     if (!j.ok) { out.append(el('div', 'bad', j.error || 'refused')); return; }
-    out.append(el('div', 'good', 'Saved to /etc/config/confd.auth.'));
+    out.append(el('div', 'good', 'Change setting successfully!'));
     /* This browser stays signed in; confd has signed out every other one. */
     out.append(el('div', null,
-      'You stay signed in here. Any other browser signed in to this page is signed out, '
-      + 'and signs in again as ' + user + '.'));
+      'Other browsers signed in to this page are signed out. Sign in again as ' + user + '.'));
     $('#pw-pass').value = '';
     $('#pw-pass2').value = '';
     await checkAuth();
@@ -161,7 +158,7 @@ async function renderSshKeys() {
   try {
     const j = await get('/api/sshkeys');
     SSH_LINES = j.keys.map((k) => k.line);
-    if (!j.keys.length) { box.append(el('p', 'hint', 'No keys yet: SSH accepts the root password only.')); return; }
+    if (!j.keys.length) { box.append(el('p', 'hint', 'No SSH key. SSH accepts the root password only.')); return; }
     const t = el('ul', 'keylist');
     for (const k of j.keys) {
       const li = el('li');
@@ -196,7 +193,7 @@ async function addSshKey() {
     const j = await r.json();
     if (!j.ok) { out.append(el('div', 'bad', j.error || 'refused')); return; }
     $('#sshkey-new').value = '';
-    out.append(el('div', 'good', 'Added. dropbear reads the file on every login; nothing to restart.'));
+    out.append(el('div', 'good', 'Key added.'));
     await renderSshKeys();
   } catch (e) { out.append(el('div', 'bad', String(e.message || e))); }
 }
@@ -206,11 +203,8 @@ export async function delSshKey(i, line) {
   out.textContent = '';
   /* The only way into a keys-only stick, and a removal that cannot be undone
      from here: the key has to be pasted again. */
-  if (!confirm('Remove this key?\n\n'
-      + (SSH_LINES.length <= 1
-        ? 'It is the last one: on an image whose root password is locked, nothing else lets you log in over ssh. '
-        : 'Whoever holds its private half can no longer log in. ')
-      + 'To get it back you have to paste it again.\n\nContinue?')) return;
+  if (!confirm('Are you sure you want to delete this key?'
+      + (SSH_LINES.length <= 1 ? '\n\nThis is the last key.' : ''))) return;
   try {
     const r = await fetch('/api/sshkeys', {
       method: 'POST',
@@ -239,22 +233,20 @@ async function resetConfig() {
   const btn = $('#reset-go');
 
   out.textContent = '';
-  if (!confirm('Reset the service configuration to the image defaults?\n\n'
-      + 'The keys in /etc/config_default.xml go back to their defaults: the four '
-      + 'LOID keys are emptied, and DEVICE_TYPE, DUAL_MGMT_MODE and the three '
-      + 'OMCI_CUSTOM masks (read only by the stock firmware) are reset. The '
-      + 'management IP, the VLAN, the PLOAM password, the serial number and the '
-      + 'MAC keys are NOT touched.\n\nA backup downloads first.')) return;
+  if (!confirm('Are you sure to reset the service configuration to default?\n\n'
+      + 'LOID, DEVICE_TYPE, DUAL_MGMT_MODE and the OMCI_CUSTOM masks are reset. '
+      + 'The management IP, VLAN, PLOAM password, serial number and MAC keys are kept.\n\n'
+      + 'A backup is downloaded first.')) return;
 
   btn.disabled = true;
   try {
     /* The same backup as the Backup block: encrypted when a password is given. */
     const pw = $('#reset-pass').value;
 
-    if (pw !== $('#reset-pass2').value) throw new Error('the two backup passwords differ; nothing was reset');
-    out.append(el('div', null, 'Downloading a backup…'));
+    if (pw !== $('#reset-pass2').value) throw new Error('The passwords do not match. Nothing was reset.');
+    out.append(el('div', null, 'Downloading backup, please wait ...'));
     const done = await saveBackup(pw);
-    out.append(el('div', 'good', `Backup saved (${done.size} bytes${done.encrypted ? ', encrypted' : ', not encrypted'}).`));
+    out.append(el('div', 'good', `Backup saved (${done.size} bytes, ${done.encrypted ? 'encrypted' : 'not encrypted'}).`));
 
     const p = await fetch('/api/reset', {
       method: 'POST',
@@ -268,9 +260,8 @@ async function resetConfig() {
     renderAll();
     /* Of the reset keys, only the LOID ones are read here, by omcid, and
        they apply the way every omcid key does. */
-    out.append(el('div', 'warn', 'Written. The LOID keys take effect when OMCI is '
-      + 'applied (Apply now, on the Config tab save bar) or at the next reboot; the '
-      + 'rest are read only by the stock firmware.'));
+    out.append(el('div', 'warn', 'Reset done. The LOID keys take effect after OMCI '
+      + 'is applied or the device is rebooted.'));
   } catch (e) {
     out.append(el('div', 'bad', String(e.message || e)));
     out.append(el('div', null, 'Nothing was reset.'));

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Nijika Luna: System > Firmware Update offers Switch & Reboot on the partition that is not
+  running, with nijika in the image (`/api/firmware` `nijika`): `action=swap` runs `nijika boot
+  <p>`, which commits that partition in both environment copies, then reboots. A confirm asks
+  first. The way back to a known firmware in the other partition, with no SSH or telnet.
+- Nijika UI: the page text in the plain style of the classic Realtek web pages ("This page is
+  used to configure ...", Apply Changes, short notes), and the device called the SFP: the Nijika
+  views, and every heading, intro, help line and button of the page markup (a reword table in
+  `scripts/nijika-html.py` that fails when odi-ui changes a line it rewrites). The odi-ui modules
+  keep their own wording. Status > Under the hood is Status > Statistics.
 - Nijika Luna: a telnet switch under System > Management > SSH keys, on an image that has
   telnetd (`/api/firmware` `telnetd`): `/api/switch name=telnetd.on`, which confd applies through
   `/etc/init.d/services start|stop telnetd`, so telnetd starts or stops at once. Off by default.

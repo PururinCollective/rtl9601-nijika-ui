@@ -163,10 +163,10 @@ function draw() {
   const over = new Map(p.entries.map((e) => [e.inst, e.code]));
 
   if (!p.ok) {
-    body.append(el('p', 'nj-note bad', `${KEY} holds “${current()}”, which omcid cannot read, so no override is `
-      + 'in force. Pick the codes below to write it again, or clear it.'));
+    body.append(el('p', 'nj-note bad', `${KEY} value “${current()}” is invalid. No override is `
+      + 'used. Select the codes below to set it again, or clear it.'));
   }
-  if (!MIB) { body.append(el('p', 'nj-note', 'Reading the VLAN filters…')); return; }
+  if (!MIB) { body.append(el('p', 'nj-note', 'Reading VLAN filters, please wait ...')); return; }
 
   const t = el('table', 'nj-table');
   const head = el('tr');
@@ -202,8 +202,8 @@ function draw() {
     t.append(tr);
   }
   if (!MIB.rows.length && !over.size) {
-    body.append(el('p', 'nj-note', MIB.ok ? 'The OLT has provisioned no VLAN filter (class 84) yet.'
-      : 'The MIB could not be read.'));
+    body.append(el('p', 'nj-note', MIB.ok ? 'No VLAN filter (class 84) provisioned by the OLT.'
+      : 'Failed to read MIB.'));
   } else {
     const wrap = el('div', 'nj-table-wrap');
     wrap.append(t);
@@ -211,9 +211,9 @@ function draw() {
   }
 
   const n = p.entries.length;
-  foot.append(el('span', null, EDITS.has(KEY) ? 'Saving stores ' : 'Stored as '), el('code', null, `${KEY}=${current() || ''}`),
+  foot.append(el('span', null, EDITS.has(KEY) ? 'To be saved: ' : 'Current: '), el('code', null, `${KEY}=${current() || ''}`),
     el('span', 'sep', '·'), el('span', null, `${n} of ${FWDOP_MAX} entries`));
-  if (n > FWDOP_MAX) foot.append(el('span', 'bad', `: more than ${FWDOP_MAX}, which omcid refuses as a whole`));
+  if (n > FWDOP_MAX) foot.append(el('span', 'bad', `: more than ${FWDOP_MAX}, refused by omcid`));
 }
 
 async function readFilters() {
@@ -231,12 +231,12 @@ function renderFwdop() {
     HOST = host;
     const card = el('div', 'cbi-section');
     const h = el('h3', 'nj-cardhead');
-    const again = el('button', 'nj-quick', 'Read again');
+    const again = el('button', 'nj-quick', 'Refresh');
     again.type = 'button';
     again.addEventListener('click', readFilters);
     const all = el('button', 'nj-quick', 'All → ' + hex(QUICK, 2));
     all.type = 'button';
-    all.title = `Every VLAN filter built as ${hex(QUICK, 2)}`;
+    all.title = `Set all VLAN filters to ${hex(QUICK, 2)}`;
     all.addEventListener('click', () => {
       if (!MIB) return;
       const p = parseOverride(current());
@@ -244,10 +244,10 @@ function renderFwdop() {
       write([...keep, ...MIB.rows.filter((r) => r.olt !== QUICK).map((r) => ({ inst: r.inst, code: QUICK }))]);
     });
     h.append(el('span', null, 'VLAN forward operation'), all, again);
-    const lede = el('p', 'nj-note nj-pad', 'What each VLAN filter the OLT provisioned does with a frame, and an '
-      + 'override of it. The OLT is still told the code it wrote; only the bridge rules on the stick change. '
-      + `Saving applies at once: the bridges are rebuilt and the line stays up. ${hex(QUICK, 2)} lets tagged `
-      + 'frames of any VLAN through, which some lines need for 802.1X frames on VLAN 0.');
+    const lede = el('p', 'nj-note nj-pad', 'This page is used to override the forward operation of the VLAN '
+      + 'filters provisioned by the OLT. The OLT still reads its own code; only the bridge rules of the ONU change. '
+      + `Changes apply at once without dropping the line. ${hex(QUICK, 2)} forwards tagged frames of any VLAN, `
+      + 'needed by some lines for 802.1X on VLAN 0.');
     card.append(h, lede, el('div', 'nj-fwdop-body nj-pad'), el('div', 'cbi-section-foot nj-fwdop-foot'));
     host.append(card);
     document.addEventListener('edits-changed', draw);

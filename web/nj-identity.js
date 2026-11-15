@@ -36,29 +36,29 @@ const UNKNOWN = [['0', '0, the standard unknown-entity error'], ['1', '1, answer
  */
 const FIELDS = [
   { id: 'vendor', label: 'Vendor Id', key: 'PON_VENDOR_ID', preset: 'vendor', max: 4,
-    note: 'The vendor the OLT reads in ONU-G. Four characters.' },
+    note: 'Vendor ID in ONU-G, 4 characters.' },
   { id: 'swver1', label: 'Software Version 1', key: 'OMCI_SW_VER1', preset: 'swver1',
-    note: 'Image 0 in ONU software image (ME 7).' },
+    note: 'Software image 0 (ME 7).' },
   { id: 'swver2', label: 'Software Version 2', key: 'OMCI_SW_VER2', preset: 'swver2',
-    note: 'Image 1 in ONU software image (ME 7).' },
+    note: 'Software image 1 (ME 7).' },
   { id: 'hwver', label: 'HW Version', key: 'ONU_HW_VERSION', also: 'HW_HWVER', preset: 'hwver',
-    note: 'The hardware version in ONU-G.' },
+    note: 'Hardware version in ONU-G.' },
   { id: 'omcc', label: 'OMCC Version', key: 'OMCC_VER', preset: 'omcc', options: OMCC,
-    note: 'ONU2-G OMCC version. A preset without one keeps the stored version.' },
+    note: 'OMCC version in ONU2-G. Not changed by a preset that has none.' },
   { id: 'tmopt', label: 'Traffic Management', key: 'OMCI_TM_OPT', preset: 'tm_opt', options: TM, stock: true,
-    note: 'For the stock firmware: this image always reports 2 in ONU-G, priority and rate controlled.' },
+    note: 'Used by the stock firmware only. This image always reports 2 (priority and rate controlled).' },
   { id: 'model', label: 'Product Class', key: 'GPON_ONU_MODEL', also: 'HW_CWMP_PRODUCTCLASS', preset: 'model',
-    note: 'The equipment id the OLT reads in ONU2-G, and the TR-069 product class.' },
+    note: 'Equipment ID in ONU2-G, also the TR-069 product class.' },
   { id: 'product', label: 'Vendor Product Code', key: 'OMCI_VENDOR_PRODUCT_CODE', preset: 'product',
-    note: 'ONU2-G vendor product code, decimal.' },
+    note: 'Vendor product code in ONU2-G, in decimal.' },
   { id: 'pots', label: 'POTS Ports', key: 'OMCI_POTS_PORTS', preset: 'pots', options: POTS,
-    note: 'Phone ports reported to the OLT, as the device has them. The stick has no phone socket: '
-      + 'a line the OLT provisions is for the router behind it (Status > Phone).' },
+    note: 'Number of POTS ports reported to the OLT. The device has no phone port; '
+      + 'a provisioned line is used by the router (Status > Phone).' },
   { id: 'serial', label: 'Device Serial Number', key: 'HW_SERIAL_NO', stock: true,
-    note: 'The serial number of the unit, distinct from the ONU serial number (ONT Authentication). '
-      + 'For the stock firmware: this image does not report it.' },
+    note: 'Serial number of the unit, not the ONU SN (ONT Authentication). '
+      + 'Used by the stock firmware only.' },
   { id: 'unknown', label: 'OMCI_UNKNOWN_ME_OK', key: 'OMCI_UNKNOWN_ME_OK', preset: 'unknown_me', options: UNKNOWN,
-    note: 'How omcid answers a managed entity it has no model for.' },
+    note: 'Response of omcid to an unsupported managed entity.' },
 ];
 /* Written by a preset and not shown: the stock firmware's copies, as
    `nijika ont` writes them. */
@@ -154,7 +154,7 @@ function control(f) {
     if (MODE !== CUSTOM) return;
     const v = c.value;
     const bad = fieldProblem(f, v, rowOf(f.key));
-    UI.err[f.id].textContent = bad ? bad + ': not saved until it is' : '';
+    UI.err[f.id].textContent = bad ? bad + '. Not saved.' : '';
     c.classList.toggle('invalid', !!bad);
     /* A value that breaks a rule of this page is not queued at all: the
        save bar checks the schema's rules only, and would write it. */
@@ -209,17 +209,17 @@ function sync() {
   }
   const p = PRESETS.find((x) => x.name === MODE);
   UI.status.textContent = custom
-    ? (idKeys.length ? 'Custom values, not saved yet.' : 'Custom: every field can be edited.')
-    : idKeys.length ? `${p.label}: the save bar below writes it.`
-      : `The stored identity is ${p.label}.`;
+    ? (idKeys.length ? 'Custom values, not saved.' : 'Custom: all fields can be edited.')
+    : idKeys.length ? `${p.label}: not saved. Click Apply Changes.`
+      : `Current: ${p.label}.`;
   /* The serial number's vendor and the vendor id may differ on this image:
      the OLT authenticates the serial number, and reads the vendor id. */
   const sn = String(S.VALUES.GPON_SN || '');
   const snVendor = /^[0-9a-fA-F]{16}$/.test(sn)
     ? sn.slice(0, 8).match(/../g).map((x) => String.fromCharCode(parseInt(x, 16))).join('') : sn.slice(0, 4);
   UI.vendorNote.hidden = !(v.PON_VENDOR_ID && snVendor && /^[\x20-\x7e]{4}$/.test(snVendor) && snVendor !== v.PON_VENDOR_ID);
-  UI.vendorNote.textContent = `Differs from the vendor of the ONU serial number (${snVendor}): `
-    + 'the OLT authenticates the serial number and reads this as the vendor.';
+  UI.vendorNote.textContent = `Differs from the vendor in the ONU SN (${snVendor}). `
+    + 'The OLT reads this value as the vendor.';
 }
 
 function renderIdentity() {

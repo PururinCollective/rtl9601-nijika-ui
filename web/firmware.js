@@ -315,6 +315,16 @@ async function renderFirmware() {
         + `returns to partition ${committed}, the committed one, on its own.`);
       acts.append(b);
     }
+    /* Nijika Luna: switch to the other partition, committed, and reboot
+       (nijika boot <p>): the way back to a known firmware when this one does
+       not work with the line. Only with nijika in the image, and only for a
+       partition with a kernel the bootloader would boot. */
+    if (fw.nijika && booted !== undefined && p !== booted && k.kind !== 'unknown' && !writing) {
+      const b = el('button', 'danger', 'Switch & Reboot');
+      b.type = 'button';
+      b.onclick = () => swapAction(p);
+      acts.append(b);
+    }
     if (p !== committed && p === booted) {
       const notes = devNotes(fw);
       if (notes.length) card.append(...notes);
@@ -422,6 +432,27 @@ async function renderFirmware() {
     host.append(el('p', 'callout warn', `Partition ${fw.write.slot} is being written. `
       + 'Do not reboot or power off until it finishes.'));
     followWrite(fw.write.slot);
+  }
+}
+
+/* Nijika Luna: commit the other partition and reboot into it. */
+async function swapAction(p) {
+  const out = $('#fwout');
+  out.textContent = '';
+  if (!confirm(`Are you sure to switch to partition ${p} and reboot?\n\n`
+      + `Partition ${p} will be the boot partition, with no trial. `
+      + 'The PON service stops for about two minutes.')) return;
+  try {
+    const r = await fetch('/api/firmware', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'action=swap&partition=' + encodeURIComponent(p),
+    });
+    const res = await r.json();
+    if (!res.ok) { out.append(el('div', 'bad', res.error || 'failed')); return; }
+    followReboot();
+  } catch (e) {
+    out.append(el('div', 'bad', String(e.message || e)));
   }
 }
 

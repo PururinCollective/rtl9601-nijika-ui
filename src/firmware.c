@@ -494,6 +494,9 @@ void emit_firmware_body(int fd)
 	put_fd(fd, file_exists(TELNETD_PATH) ? "true" : "false");
 	put_fd(fd, ",\"rootui\":");
 	put_fd(fd, file_exists(ROOT_UI_MARK) ? "true" : "false");
+	/* Nijika Luna: whether nijika is here to switch partitions (swap). */
+	put_fd(fd, ",\"nijika\":");
+	put_fd(fd, file_exists(NIJIKA_PATH) ? "true" : "false");
 	put_fd(fd, ",\"lanip_override\":");
 	put_fd(fd, file_exists(LANIP_OVERRIDE) ? "true" : "false");
 	emit_dev_files(fd);

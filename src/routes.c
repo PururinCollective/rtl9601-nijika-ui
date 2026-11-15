@@ -1686,7 +1686,7 @@ void serve(int conn)
 			 * which rejects it, but an argument this daemon has not
 			 * checked is one it is trusting the next program to. */
 			if ((seq(action, "try") || seq(action, "commit") ||
-			     seq(action, "write")) &&
+			     seq(action, "write") || seq(action, "swap")) &&
 			    !(seq(part, "0") || seq(part, "1"))) {
 				respond(conn, "400 Bad Request", "application/json", 0);
 				put_fd(conn, "{\"error\":\"partition must be 0 or 1\"}");
@@ -1827,6 +1827,73 @@ void serve(int conn)
 				put_fd(conn, ",\"output\":\"");
 				put_json_cstr(conn, status);
 				put_fd(conn, "\"}");
+				return;
+			}
+
+			/*
+			 * Nijika Luna: switch to the partition this stick is
+			 * NOT running, committed, and reboot into it -- nijika
+			 * boot <p>, then the reboot below. The way back to a
+			 * known firmware in the other partition when this one
+			 * does not work with the line. Refused for the running
+			 * partition, while a write runs, and for a partition
+			 * with no kernel the bootloader would boot; nijika
+			 * checks the last two again itself.
+			 */
+			if (seq(action, "swap")) {
+				static char *const rb[] = { "sh", 0 };
+				static const char script[] =
+					"trap '' HUP\n"
+					"( sleep 1; /sbin/reboot || /bin/reboot ) >/dev/null 2>&1 &\n";
+				char *const argv[] = { "nijika", "boot", part, 0 };
+				char act[8], buf[512], out[64];
+				long code = -1;
+
+				if (!file_exists(NIJIKA_PATH)) {
+					respond(conn, "400 Bad Request", "application/json", 0);
+					put_fd(conn, "{\"ok\":false,\"error\":\"this image has no nijika\"}");
+					return;
+				}
+				if (fwu_running()) {
+					respond(conn, "409 Conflict", "application/json", 0);
+					put_fd(conn, "{\"ok\":false,\"error\":\"a firmware write is running. "
+						     "Wait for it to finish\"}");
+					return;
+				}
+				if (!nv_get("sw_active", act, sizeof(act)) || !act[0]) {
+					respond(conn, "400 Bad Request", "application/json", 0);
+					put_fd(conn, "{\"ok\":false,\"error\":\"cannot tell which partition is running; nothing was changed\"}");
+					return;
+				}
+				if (seq(act, part)) {
+					respond(conn, "400 Bad Request", "application/json", 0);
+					put_fd(conn, "{\"ok\":false,\"error\":\"partition ");
+					put_json_cstr(conn, part);
+					put_fd(conn, " is the running partition; nothing was changed\"}");
+					return;
+				}
+				if (!slot_kernel_ok(part[0])) {
+					respond(conn, "400 Bad Request", "application/json", 0);
+					put_fd(conn, "{\"ok\":false,\"error\":\"partition ");
+					put_json_cstr(conn, part);
+					put_fd(conn, " has no bootable kernel; nothing was changed\"}");
+					return;
+				}
+				if (run_to_buf_ex(NIJIKA_PATH, argv, buf, sizeof(buf), &code,
+						  NIJIKA_BOOT_TIMEOUT_MS) < 0 || code != 0) {
+					respond(conn, "200 OK", "application/json", 0);
+					put_fd(conn, "{\"ok\":false,\"error\":\"");
+					put_json_cstr(conn, buf[0] ? buf : "nijika boot failed");
+					put_fd(conn, "\"}");
+					return;
+				}
+				/* Answer first, then reboot a second later, as below. */
+				respond(conn, "200 OK", "application/json", 0);
+				put_fd(conn, "{\"ok\":true,\"note\":\"switched to partition ");
+				put_json_cstr(conn, part);
+				put_fd(conn, "; rebooting\"}");
+				run_script_to_buf("/bin/sh", rb, script, out, sizeof(out),
+						 REBOOT_TIMEOUT_MS);
 				return;
 			}
 

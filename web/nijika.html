@@ -59,7 +59,7 @@
        as U-Boot would boot another partition next. Not dismissible. -->
   <div id="trialbanner" class="trial" role="status" hidden>
     <p><strong>Trial boot.</strong> <span id="trial-what"></span></p>
-    <button id="trial-commit" class="primary" type="button">Commit to this image</button>
+    <button id="trial-commit" class="primary" type="button">Commit</button>
     <div id="trial-dev"></div>
     <div id="trial-out"></div>
   </div>
@@ -73,7 +73,7 @@
   </div>
   <div id="fallbackbanner" class="trial" role="status" hidden>
     <p id="fallback-text"></p>
-    <a href="#network/lan">Host port settings</a>
+    <a href="#network/lan">Host Port Settings</a>
   </div>
   <!-- A newer odi-oss release (updates.js), found by this browser, not by the
        stick. Unlike the bars above it can be dismissed, once per version. -->
@@ -94,9 +94,8 @@
     <button id="netaddr-result-ok" type="button">Dismiss</button>
   </div>
   <div id="defaultauth" class="callout warn banner" hidden>
-    <p>This page answers to the built-in <code>admin</code> / <code>admin</code>.
-       Anyone who can reach it can change the line settings.</p>
-    <button id="gopassword" type="button">Set a password</button>
+    <p>Warning: The default password <code>admin</code> / <code>admin</code> is in use. Please change it.</p>
+    <button id="gopassword" type="button">Change Password</button>
   </div>
   <div class="nj-pagehead">
     <span id="crumb" class="nj-crumb"></span>
@@ -109,7 +108,7 @@
   <!-- ============================================ Status > Under the hood -->
   <section id="p-status" class="panel" hidden>
     <!-- The stick, part by part, each with its live figure (overview.js). -->
-    <div class="overview" id="overview" role="group" aria-label="The stick, part by part"></div>
+    <div class="overview" id="overview" role="group" aria-label="SFP status"></div>
     <div class="status-grid">
       <div class="optics">
         <div class="meter" id="rx"></div>
@@ -130,29 +129,22 @@
         </section>
         <!-- The stick itself, not the optics module; shown when the kernel has the sensor. -->
         <section class="block" id="stickblock" hidden>
-          <h2>Stick</h2>
+          <h2>SFP</h2>
           <dl class="env" id="stick"></dl>
-          <p class="help" id="chip-help" hidden>The chip temperature is read from the SoC sensor. Its scale is not verified against a reference, so read it as a trend rather than an exact figure. The limits are set high on purpose, and nothing is shut down automatically: the page only warns.</p>
+          <p class="help" id="chip-help" hidden>Note: The chip temperature is read from the SoC sensor and is not calibrated. A warning is shown at the limits; no action is taken.</p>
         </section>
       </div>
     </div>
 
     <!-- The whole PON, every ONU on the fibre together, not this stick; shown when the driver has the counters. -->
     <section class="block" id="ponblock" hidden>
-      <h2>Shared PON, all ONUs</h2>
+      <h2>PON Downstream Usage</h2>
       <div class="pon" id="pon"></div>
-      <p class="help">How full the downstream of the whole PON is: every ONU on this fibre together, not the traffic of this stick, which is under Forwarding. An estimate, worked out between two refreshes of this page from the idle frames the OLT sends when nobody needs the capacity.</p>
+      <p class="help">This shows the downstream usage of the whole PON (all ONUs on this fibre), estimated from the idle frames of the OLT between two refreshes. The traffic of this SFP is shown under Forwarding.</p>
       <details class="more">
-        <summary>What the figure leaves out</summary>
-        <p>The figure is the average between two refreshes, about 15 seconds: a
-           burst shorter than that, a speed test for one, shows at a fraction of
-           its rate. The colour of the bar is a guide, blue under 50 %, yellow
-           from 50 %, red from 80 %. The page keeps no history; that is the
-           metrics exporter's job.</p>
-        <p>Frame headers and management traffic count as in use, so a PON with no
-           traffic at all reads a little above zero. An OLT may send dummy frames
-           in place of idle ones, which would read as load. It says nothing about
-           the upstream, and nothing about who the traffic belongs to.</p>
+        <summary>Note</summary>
+        <p>The value is the average over about 15 seconds; a shorter burst is shown at a fraction of its rate. Bar colour: blue below 50 %, yellow from 50 %, red from 80 %. No history is kept.</p>
+        <p>Frame headers and management traffic are counted, so an idle PON reads slightly above zero. Dummy frames sent in place of idle frames are counted as load. The upstream is not measured.</p>
       </details>
     </section>
 
@@ -160,30 +152,25 @@
       <section class="block">
         <h2>Forwarding</h2>
         <div class="flow" id="flow"></div>
-        <p class="help">Healthy looks like a mirror: what the fibre receives, the host side sends.</p>
+        <p class="help">In normal operation, the PON receive rate equals the host send rate.</p>
         <details class="more">
-          <summary>Why rates, not totals</summary>
-          <p>Traffic crosses the switch in hardware, so these counters are the only
-             place forwarding is visible. The fibre side counts without
-             interruption; the host side is cleared by the performance-monitoring
-             cycle every fifteen minutes. So the two running totals cannot be held
-             against each other &mdash; only the rates, measured between two
-             refreshes of this page, mirror.</p>
+          <summary>Note</summary>
+          <p>Traffic is forwarded in hardware, and these counters are the only measure. The PON counters run continuously; the host counters are cleared every 15 minutes, so only the rates are compared.</p>
         </details>
       </section>
 
       <section class="block">
         <div class="block-head">
-          <h2>Learned addresses</h2>
-          <button id="l2-load" type="button">Read the MAC table</button>
+          <h2>MAC Table</h2>
+          <button id="l2-load" type="button">Show</button>
         </div>
-        <p class="help">Every address the switch has learned, and the side it learned it on.</p>
+        <p class="help">This table shows the MAC addresses learned by the switch, and the port of each.</p>
         <div id="l2"></div>
       </section>
     </div>
 
     <details class="more">
-      <summary>Raw diag output</summary>
+      <summary>Diag Output</summary>
       <pre id="raw"></pre>
     </details>
   </section>
@@ -204,7 +191,7 @@
     <p class="legend" id="legend" hidden></p>
 
     <div class="sub" id="c-line" role="tabpanel" aria-labelledby="st-config-line" data-sub="line">
-      <p class="lede">What the OLT authenticates this ONU by.</p>
+      <p class="lede">This page is used to configure the ONU authentication: ONU SN, PLOAM password and LOID.</p>
       <!-- Nijika: the two ways an OLT authenticates, one tab each (nijika.js). -->
       <div class="nj-tabs" id="auth-tabs" role="tablist" aria-label="Authentication">
         <button role="tab" type="button" data-authtab="sn" aria-selected="true">ONU SN &amp; PLOAM</button>
@@ -213,13 +200,13 @@
       <div class="settings" id="set-line"></div>
     </div>
     <div class="sub" id="c-vlan" role="tabpanel" aria-labelledby="st-config-vlan" data-sub="vlan" hidden>
-      <p class="lede">The service VLAN this stick tags, and when the firmware honours it.</p>
+      <p class="lede">This page is used to configure the service VLAN of the SFP.</p>
       <div class="settings" id="set-vlan"></div>
       <!-- Nijika: the VLAN forward operation override as a table (nj-fwdop.js). -->
       <div id="nj-fwdop"></div>
     </div>
     <div class="sub" id="c-identity" role="tabpanel" aria-labelledby="st-config-identity" data-sub="identity" hidden>
-      <p class="lede">What the OLT is told this ONU is.</p>
+      <p class="lede">This page is used to configure the ONU identity reported to the OLT.</p>
       <div id="identity-switch" class="switchrow" hidden></div>
       <div id="identity-out"></div>
       <!-- Nijika: Device Emulation and the identity fields (nj-identity.js), then
@@ -231,43 +218,34 @@
       </section>
       <details class="expert" id="expert" hidden>
         <summary>Expert settings</summary>
-        <p class="s-warn">These change how the stick presents itself to the OLT. A wrong
-          value can stop the OLT from provisioning the ONU, and the line drops while
-          the ONU re-registers. Change them only to match what a native ONU reports.</p>
+        <p class="s-warn">Warning: These settings change how the SFP is reported to the OLT. A wrong value can stop the OLT from provisioning the ONU, and the line drops while the ONU registers again. Change them only to match a native ONU.</p>
         <div class="settings" id="set-expert"></div>
       </details>
     </div>
     <div class="sub" id="c-network" role="tabpanel" aria-labelledby="st-config-network" data-sub="network" hidden>
-      <p class="lede">How you reach this stick from the host side.</p>
-      <p class="lede nj-lede-route">Routes for the management address, so the stick answers a host on another subnet without NAT on the router: a destination network and the gateway on this LAN that leads to it.</p>
+      <p class="lede">This page is used to configure the management interface of the SFP.</p>
+      <p class="lede nj-lede-route">This page is used to configure static routes of the management interface, so that a host on another subnet can reach the SFP without NAT on the router.</p>
       <div class="settings" id="set-network"></div>
       <!-- Not schema rows: HOST_AUTONEG and HOST_SERDES are never written by Save.
            hostlink.js runs a trial the image reverts by itself unless kept. -->
       <section class="block" id="hostlink" hidden>
-        <div class="block-head"><h2>Host port</h2></div>
+        <div class="block-head"><h2>Host Port</h2></div>
         <div class="settings">
           <div class="setting" id="hostlink-an">
             <div class="s-label">
               <div class="s-title"><label class="s-name" for="hostlink-try">Auto-negotiation</label></div>
-              <p class="s-help">With the router on the SFP edge. Leave it on unless the router port has
-                auto-negotiation off. A change is a trial: it reverts by itself after two minutes unless you
-                keep it, and keeping it only works if this page still answers in the new mode.</p>
+              <p class="s-help">Auto-negotiation with the router port. Keep it enabled unless the router port has auto-negotiation disabled. A change is reverted after 2 minutes unless it is kept; Keep needs this page to answer in the new mode.</p>
               <p class="s-help" id="hostlink-an-fb" hidden></p>
-              <p class="s-help" id="hostlink-an-na" hidden>Not changeable while the host port runs 2.5G or HiSGMII:
-                the link mode sets it and the port is forced. Go back to Fiber 1G below to change it.</p>
+              <p class="s-help" id="hostlink-an-na" hidden>Not available in 2.5G or HiSGMII mode (forced). Set the link mode to Fiber 1G to change it.</p>
               <details class="s-more">
-                <summary>If the stick becomes unreachable</summary>
-                <p>A boot whose host link does not come up with auto-negotiation off falls back to on for
-                   that boot, and the banner says so. If it still cannot be reached: plug it in, wait about
-                   80 seconds, pull it, wait a few seconds; three times in a row; then plug it in and leave
-                   it in. That boot is the safe mode: it clears this setting and runs auto-negotiation
-                   (System, Access has the details).</p>
+                <summary>If the SFP cannot be reached</summary>
+                <p>If the host link does not come up with auto-negotiation disabled, the SFP uses auto-negotiation for that boot and shows a banner. If the SFP still cannot be reached, start safe mode: power it on for about 80 seconds and remove it, three times in a row, then leave it in. Safe mode clears this setting (see System &gt; Management).</p>
               </details>
             </div>
             <div class="s-control">
               <div class="s-inline">
                 <button id="hostlink-try" type="button">Try auto-negotiation off</button>
-                <button id="hostlink-keep-on" type="button" hidden>Keep auto-negotiation on</button>
+                <button id="hostlink-keep-on" type="button" hidden>Keep Enabled</button>
               </div>
               <div id="hostlink-out"></div>
             </div>
@@ -275,23 +253,16 @@
           <div class="setting" id="hostlink-sd" hidden>
             <div class="s-label">
               <div class="s-title"><label class="s-name" for="hostlink-sd-mode">Link mode</label></div>
-              <p class="s-help">How the host port talks to the router. Leave it on Fiber 1G (the default and
-                the most compatible) unless the router port runs 2.5G: 2.5G runs with auto-negotiation off.
-                A wrong mode makes the stick unreachable until the trial reverts by itself, after 120
-                seconds; keeping it only works if this page still answers in the new mode.</p>
+              <p class="s-help">Link mode of the host port. Fiber 1G is the default and the most compatible. Use 2.5G only if the router port runs 2.5G (auto-negotiation disabled). A wrong mode makes the SFP unreachable until the change is reverted after 120 seconds.</p>
               <details class="s-more">
-                <summary>If the stick becomes unreachable</summary>
-                <p>A boot in 2.5G that sees no link falls back to Fiber 1G for that boot, and the banner says
-                   so; the setting is kept. If it still cannot be reached: plug it in, wait about 80 seconds,
-                   pull it, wait a few seconds; three times in a row; then plug it in and leave it in. That
-                   boot is the safe mode: it clears this setting and runs Fiber 1G (System, Access has the
-                   details). HiSGMII has no link signal, so only a kept trial or the safe mode tells it apart.</p>
+                <summary>If the SFP cannot be reached</summary>
+                <p>If there is no link in 2.5G, the SFP uses Fiber 1G for that boot and shows a banner; the setting is kept. If the SFP still cannot be reached, start safe mode: power it on for about 80 seconds and remove it, three times in a row, then leave it in. Safe mode clears this setting (see System &gt; Management). HiSGMII has no link signal.</p>
               </details>
             </div>
             <div class="s-control">
               <div class="s-inline">
                 <select id="hostlink-sd-mode"></select>
-                <button id="hostlink-sd-try" type="button">Try this mode</button>
+                <button id="hostlink-sd-try" type="button">Apply</button>
               </div>
               <div id="hostlink-sd-out"></div>
             </div>
@@ -300,8 +271,7 @@
         <div class="settings compact" id="hostlink-now"></div>
         <dialog id="hostlink-dialog" aria-labelledby="hostlink-dialog-title">
           <p id="hostlink-dialog-title"><strong>Keep this setting?</strong> <span id="hostlink-count"></span></p>
-          <p class="help">If this page answers, the link works in the new mode. Keep stores it; Revert, or no
-            answer, goes back to the mode before.</p>
+          <p class="help">This page answers in the new mode. Click Keep to save it. Revert, or no answer, restores the previous mode.</p>
           <div class="switchrow">
             <button id="hostlink-keep" class="primary" type="button">Keep</button>
             <button id="hostlink-revert" type="button">Revert</button>
@@ -313,19 +283,19 @@
     <div class="sub" id="c-services" role="tabpanel" aria-labelledby="st-config-services" data-sub="services" hidden>
       <!-- Nijika: how this page shows itself, kept in this browser (nijika.js). -->
       <div class="cbi-section">
-        <h3>This page</h3>
+        <h3>Web Page</h3>
         <div class="nj-form">
           <div class="nj-field">
             <label for="nj-expert">Show Expert settings</label>
             <div>
               <select id="nj-expert"><option value="off">Off</option><option value="on">On</option></select>
-              <p class="nj-note">On: ONT Identity shows the expert settings, open, GPON &gt; Advanced is in the menu with every key the stick stores, and each setting shows the name of its key. Off keeps all three out of sight. Kept in this browser.</p>
+              <p class="nj-note">On: show the expert settings on ONT Identity, the GPON &gt; Advanced page with all stored keys, and the key name of each setting. Saved in this browser.</p>
             </div>
           </div>
         </div>
       </div>
       <h3 class="nj-subhead">Services</h3>
-      <p class="lede">Where this stick sends its logs, gets its time, and how it treats multicast.</p>
+      <p class="lede">This page is used to configure remote syslog, NTP and multicast.</p>
       <div class="settings" id="set-services"></div>
     </div>
     <div class="sub" id="c-other" role="tabpanel" aria-labelledby="st-config-other" data-sub="other" hidden>
@@ -334,7 +304,7 @@
     <div class="sub" id="c-stock" role="tabpanel" aria-labelledby="st-config-stock" data-sub="stock" hidden>
       <p class="lede" id="advanced-deck">Every key the device stores.</p>
       <input id="filter" type="search" placeholder="Filter by name" autocomplete="off" aria-label="Filter keys">
-      <p class="help">Backups and restores carry every one of these, whether or not this page offers it for editing.</p>
+      <p class="help">All keys are included in backup and restore.</p>
       <div class="settings" id="sections"></div>
     </div>
   </section>
@@ -343,23 +313,23 @@
   <section id="p-omci" class="panel" hidden>
     <div class="sub" id="o-services" role="tabpanel" aria-labelledby="st-omci-services" data-sub="services">
       <div class="block-head">
-        <p class="lede">What the OLT built on this ONU. When it disagrees with Config, the line is right.</p>
-        <button id="services-reload" type="button">Read again</button>
+        <p class="lede">This page shows the services provisioned by the OLT (OMCI). They take priority over the GPON settings.</p>
+        <button id="services-reload" type="button">Refresh</button>
       </div>
       <!-- Nijika: the services as lanes, OLT to router (nj-service.js). -->
       <div id="nj-service"></div>
-      <h3 class="nj-subhead">Table by table</h3>
+      <h3 class="nj-subhead">Service Tables</h3>
       <div id="services-cards" class="cards"></div>
     </div>
 
     <div class="sub" id="o-phone" role="tabpanel" aria-labelledby="st-omci-phone" data-sub="phone" hidden>
       <div class="block-head">
-        <p class="lede">The phone lines the OLT provisioned. The stick has no phone socket and registers nothing: the router behind it registers the line, with these values.</p>
-        <button id="phone-reload" type="button">Read again</button>
+        <p class="lede">This page shows the VoIP lines provisioned by the OLT. The SFP has no phone port; the router registers the line with these values.</p>
+        <button id="phone-reload" type="button">Refresh</button>
       </div>
       <div id="phone-off" class="me-card" hidden>
-        <p class="me-state">Phone ports are off</p>
-        <p class="hint">The stick tells the OLT it has no phone port, so no line is provisioned. To turn them on, go to Config, ONU identity, Expert settings and set the phone ports key to 1 or 2, then apply. That re-registers the ONU and interrupts the internet for a moment. The stick still has no phone socket: your router behind it registers the line.</p>
+        <p class="me-state">Phone Ports: Disabled</p>
+        <p class="hint">The SFP reports no phone port to the OLT, so no line is provisioned. To enable, set POTS Ports to 1 or 2 in GPON &gt; ONT Identity and apply. The ONU registers again and the internet stops for a moment. The router registers the line.</p>
       </div>
       <div id="phone-tools" class="formrow" hidden>
         <button id="phone-secrets" type="button">Show secrets</button>
@@ -376,10 +346,10 @@
     <div class="sub" id="o-mib" role="tabpanel" aria-labelledby="st-omci-mib" data-sub="mib" hidden>
       <!-- Nijika: the MIB as a drawing, fibre to ports (nj-topology.js). -->
       <div id="nj-topology"></div>
-      <h3 class="nj-subhead">Every managed entity</h3>
+      <h3 class="nj-subhead">Managed Entities</h3>
       <div class="block-head">
-        <p class="lede">Every table, the entities in it and their attributes, exactly as <code>omcicli mib get</code> prints them. Read-only.</p>
-        <button id="me-refresh" type="button">Read again</button>
+        <p class="lede">This page shows all OMCI managed entities and their attributes, as printed by <code>omcicli mib get</code>. Read-only.</p>
+        <button id="me-refresh" type="button">Refresh</button>
         <button id="me-count" type="button" title="Reads every table once, one at a time">Count entities</button>
       </div>
       <div class="formrow mib-tools">
@@ -419,15 +389,9 @@
       <div class="chips" id="me-dumps" aria-label="Data path dumps"></div>
       <div id="me-out"></div>
       <details class="more">
-        <summary>Why nothing here writes, and where the table list comes from</summary>
-        <p><code>omcicli mib set</code> exists and is out of reach on purpose. The
-           MIB is the OLT&rsquo;s copy of the service and it is rebuilt at every
-           re-registration, so a change made here would survive one reboot and
-           not the next. Settings that persist are on Config.</p>
-        <p>The table list is a capture, not a query: <code>omcicli get tables</code>
-           returns nothing and leaves the stock <code>omci_app</code> unable to
-           answer anything until it is restarted. This image&rsquo;s omcid answers
-           it safely, but the refusal stays for the stock slot.</p>
+        <summary>Note</summary>
+        <p>The MIB is written by the OLT and rebuilt at each registration, so it cannot be changed here. Use the GPON settings for permanent changes.</p>
+        <p>The table list is fixed: <code>omcicli get tables</code> is not used, as it stops the stock <code>omci_app</code>.</p>
       </details>
     </div>
   </section>
@@ -438,62 +402,39 @@
     <div class="sub" id="s-firmware" role="tabpanel" aria-labelledby="st-system-firmware" data-sub="firmware">
       <div id="parts"></div>
       <details class="more" id="commit-why">
-        <summary>What committing means</summary>
-        <p>U-Boot boots the <strong>committed</strong> partition by default, every
-           time: the one marked Committed above (<code>sw_commit</code>).</p>
-        <p>A trial boot is one-shot. Trying a partition boots it once; the next
-           reboot, whether the image came up or not, returns to the committed
-           partition.</p>
-        <p>Committing makes the running image the default, so it is what every
-           later reboot comes back to.</p>
-        <p>A committed image that later fails keeps booting itself: there is no
-           trial left to fall back from. Check that it registers and carries
-           traffic before you commit to it.</p>
+        <summary>Note: Commit</summary>
+        <p>U-Boot boots the <strong>committed</strong> partition (<code>sw_commit</code>), marked Committed above.</p>
+        <p>Try boots a partition once. The next reboot returns to the committed partition.</p>
+        <p>Commit makes the running partition the boot partition. A committed image that fails keeps booting: check that it registers and passes traffic before Commit.</p>
       </details>
 
       <section class="block">
-        <h2>Load a new image</h2>
+        <h2>Firmware Upgrade</h2>
         <div class="formrow">
-          <label>Image tarball <input id="fw-file" type="file" accept=".image,.tar,application/x-tar"></label>
+          <label>Firmware File <input id="fw-file" type="file" accept=".image,.tar,application/x-tar"></label>
           <button id="fw-upload" type="button">Upload</button>
         </div>
-        <p class="help">Uploading only stages it in RAM. Writing it to a partition is a separate step.</p>
+        <p class="help">Upload stores the image in RAM only. Then write it to a partition above.</p>
         <div id="fw-upload-out"></div>
         <div id="fwout"></div>
         <details class="more">
-          <summary>How a trial boot works</summary>
-          <p>Trying a partition boots it <strong>once</strong>, with the hardware
-             watchdog armed. If the image does not come up, the stick returns by
-             itself to whichever partition is committed &mdash; no console, no
-             intervention. A trial that boots fine still reverts at the next
-             reboot, so committing to it is a separate decision you make after seeing
-             it work.</p>
-          <p>Writing takes about eighty seconds and runs on the stick by itself:
-             this page follows it, and closing the page does not stop it. Do not
-             power the stick off until it says written.</p>
-          <p><code>/tmp</code> is a RAM disk sharing
-             <span id="memtotal">27&nbsp;MB</span> with everything else running,
-             so the image sits there only until it is written. The updater checks
-             the md5 of both the kernel and the root filesystem before it erases
-             anything.</p>
+          <summary>Note: Try and Write</summary>
+          <p>Try boots a partition <strong>once</strong>, with the hardware watchdog armed. If the image does not come up, the SFP returns to the committed partition by itself. The next reboot after a successful Try also returns to the committed partition.</p>
+          <p>Writing takes about 80 seconds and continues if this page is closed. Do not power off the SFP until it is done.</p>
+          <p><code>/tmp</code> is a RAM disk of <span id="memtotal">27&nbsp;MB</span>. The md5 of the kernel and the root file system is checked before anything is erased.</p>
         </details>
         <details class="more">
-          <summary>What the OLT is told about the version</summary>
-          <p>On this image the OLT is told <code>0.0.0</code> for both software
-             images, whatever the partitions hold, unless the ONU identity switch
-             on Config is on &mdash; then it is told <code>OMCI_SW_VER1</code> for
-             image 0 and <code>OMCI_SW_VER2</code> for image 1. Both keys are
-             shared with the stock firmware, which may rewrite them when it
-             boots.</p>
+          <summary>Note: Software Version Reported to the OLT</summary>
+          <p>The OLT reads <code>0.0.0</code> for both software images unless the ONU identity switch is on; then it reads <code>OMCI_SW_VER1</code> for image 0 and <code>OMCI_SW_VER2</code> for image 1. The stock firmware may rewrite both keys when it boots.</p>
         </details>
         <details class="more">
-          <summary>Doing it from a shell instead</summary>
+          <summary>Upgrade from a Shell</summary>
           <pre id="upload"></pre>
         </details>
       </section>
 
       <section class="block" id="update-check">
-        <h2>New releases</h2>
+        <h2>New Releases</h2>
         <div id="update-switch" class="switchrow"></div>
         <div id="update-out"></div>
       </section>
@@ -502,73 +443,55 @@
     <!-- Access -->
     <div class="sub" id="s-access" role="tabpanel" aria-labelledby="st-system-access" data-sub="access" hidden>
       <section class="block">
-        <h2>Sign-in for this page</h2>
+        <h2>Password Configuration</h2>
         <div class="formrow">
           <label>Username <input id="pw-user" autocomplete="username" value="admin" maxlength="64"></label>
-          <label>New password <input id="pw-pass" type="password"
+          <label>New Password <input id="pw-pass" type="password"
                  autocomplete="new-password" placeholder="4 to 128 characters" maxlength="128"></label>
-          <label>Again <input id="pw-pass2" type="password"
+          <label>Confirmed Password <input id="pw-pass2" type="password"
                  autocomplete="new-password" placeholder="the same password" maxlength="128"></label>
-          <button id="pw-save" class="primary" type="button">Save password</button>
+          <button id="pw-save" class="primary" type="button">Apply Changes</button>
         </div>
-        <p class="help" id="pw-scope">Signs you in to this page only: not SSH, and nothing the OLT sees.</p>
+        <p class="help" id="pw-scope">Password for this page only. Not used for SSH.</p>
         <details class="more">
-          <summary>Where it is kept, and what erases it</summary>
-          <p>In <code>/etc/config/confd.auth</code>, which is created here if it
-             does not exist yet, and which survives reflashing. A factory reset
-             erases it and the page falls back to <code>admin</code> /
-             <code>admin</code> until you set one again.</p>
+          <summary>Note</summary>
+          <p>Saved in <code>/etc/config/confd.auth</code>, kept after a firmware upgrade. A factory reset erases it; the password is then <code>admin</code> / <code>admin</code>.</p>
         </details>
         <details class="more" id="safemode-help">
-          <summary>Locked out? The safe mode</summary>
-          <p><strong>What it is.</strong> A recovery boot. For that one boot the fibre (PON) is off, so there is
-             no internet through this stick and it does not disturb the line; the host port runs
-             auto-negotiation, and a setting that forced it off is cleared; this page accepts
-             <code>admin</code> / <code>admin</code> and root over SSH accepts the password
-             <code>admin</code>. The saved password and SSH keys are unchanged: they come back at the next boot.</p>
-          <p><strong>How to leave it.</strong> If you lost your password, set a new one here (or add an SSH key):
-             it is saved and takes effect from the next boot. Acknowledge the banner, then reboot. The next
-             boot uses the saved configuration again, with the fibre on.</p>
-          <p><strong>How to enter it.</strong> Plug the stick in, wait about 80 seconds, pull it, wait a few
-             seconds. Do that five times in a row (three times when the host port is set to auto-negotiation
-             off), then plug it in and leave it in: that boot is the safe mode. Do not pull it again. Each
-             power-up has to end roughly 60 to 110 seconds after power-on (the stick spends about
-             54 seconds before its kernel starts; that can vary by board).</p>
-          <p><strong>The trade-off.</strong> Anyone who can power-cycle the stick can do this, and gets
-             the default password for that boot.</p>
+          <summary>Safe Mode</summary>
+          <p><strong>Safe mode</strong> is a recovery boot. For that boot the PON is off, the host port uses auto-negotiation, this page accepts <code>admin</code> / <code>admin</code> and root over SSH accepts the password <code>admin</code>. The saved password and SSH keys are not changed.</p>
+          <p><strong>To enter:</strong> power on the SFP, wait about 80 seconds, remove it, wait a few seconds. Repeat five times (three times if auto-negotiation is disabled), then leave it in. Each power-on must end 60 to 110 seconds after it starts.</p>
+          <p><strong>To leave:</strong> set a new password or add an SSH key if needed, acknowledge the banner, then reboot.</p>
+          <p><strong>Note:</strong> anyone who can power-cycle the SFP can enter safe mode.</p>
         </details>
         <div id="pw-out"></div>
       </section>
 
       <section class="block" id="device-login">
-        <h2>Device login</h2>
-        <p class="help">The SSH username and password on this stick. They save with the rest of Config.</p>
+        <h2>Stock Firmware Login</h2>
+        <p class="help">Login of the stock firmware in the other partition. Saved with the other settings.</p>
         <div class="settings" id="accounts"></div>
       </section>
 
       <section class="block">
-        <h2>SSH keys</h2>
-        <p class="help">Keys that log in as <code>root</code> without a password. They survive a reflash.</p>
+        <h2>SSH Keys</h2>
+        <p class="help">Public keys for <code>root</code> login without a password. Kept after a firmware upgrade.</p>
         <div id="sshkeys"></div>
         <div class="formrow">
-          <label class="grow">Add a public key <input id="sshkey-new" autocomplete="off" spellcheck="false"
+          <label class="grow">Public Key <input id="sshkey-new" autocomplete="off" spellcheck="false"
                  placeholder="ssh-ed25519 AAAA… comment"></label>
-          <button id="sshkey-add" type="button">Add key</button>
+          <button id="sshkey-add" type="button">Add</button>
         </div>
         <details class="more">
-          <summary>How keys are stored</summary>
-          <p>One OpenSSH line each, as <code>ssh-keygen</code> prints them. They are
-             the way in on this image: its root password is fixed per build. Kept
-             in <code>/etc/config/dropbear.d/authorized_keys</code>, beside the host
-             key, so they survive a firmware reflash. dropbear reads the file on
-             every login, so nothing restarts.</p>
+          <summary>Note</summary>
+          <p>One OpenSSH line per key, as printed by <code>ssh-keygen</code>. Saved in <code>/etc/config/dropbear.d/authorized_keys</code>.</p>
         </details>
         <div id="sshkey-out"></div>
       </section>
 
       <section class="block" id="nj-telnet" hidden>
         <h2>Telnet</h2>
-        <p class="help">A fallback way in beside SSH, on port 23. Off unless you turn it on.</p>
+        <p class="help">Telnet server on port 23, for use when SSH is not available. Disabled by default.</p>
         <div id="telnet-switch" class="switchrow"></div>
         <div id="telnet-out"></div>
       </section>
@@ -579,16 +502,14 @@
       <div class="block-row">
         <section class="block">
           <h2>Backup</h2>
-          <p class="help">Both config stores, identity included: the serial number, the line login and the keys.
-             Take one before anything you cannot undo, and protect it with a password.</p>
+          <p class="help">This page is used to save the configuration (both stores, including the serial number, LOID and keys) to a file. A password is recommended.</p>
           <div class="formrow">
             <label>Password <input id="backup-pass" type="password" autocomplete="new-password"></label>
-            <label>Again <input id="backup-pass2" type="password" autocomplete="new-password"></label>
+            <label>Confirmed Password <input id="backup-pass2" type="password" autocomplete="new-password"></label>
           </div>
-          <p><button id="backup-go" type="button">Download encrypted backup</button>
-             <a href="/api/backup" download id="backup-plain">Download without encryption</a></p>
-          <p class="help">The password is not stored anywhere: without it the file cannot be read, here or
-             anywhere else. The plain file keeps every secret readable by anyone who gets it.</p>
+          <p><button id="backup-go" type="button">Backup (Encrypted)</button>
+             <a href="/api/backup" download id="backup-plain">Backup (Not Encrypted)</a></p>
+          <p class="help">Note: The password is not stored; the file cannot be restored without it. A file that is not encrypted shows all secrets.</p>
           <div id="backup-out"></div>
         </section>
 
@@ -604,61 +525,47 @@
           <div class="formrow">
             <label class="check"><input id="restore-identity" type="checkbox"> Include identity keys</label>
           </div>
-          <p class="help">Nothing is written until you have seen what differs.</p>
+          <p class="help">The differences are shown before anything is written.</p>
           <details class="more">
-            <summary>What a restore is allowed to write</summary>
-            <p>Every value goes through the same validation the Config fields use, so
-               the SerDes keys stay refused. The identity keys need the tick box: a
-               backup restored onto a <em>different</em> stick would otherwise
-               overwrite the serial number and MAC key its line authenticates on.</p>
+            <summary>Note</summary>
+            <p>Values are checked as on the settings pages; the SerDes keys are refused. Identity keys are written only with Include identity keys, so a backup of another SFP does not overwrite the serial number and MAC key.</p>
           </details>
           <div id="restore-out"></div>
-          <p><button id="restore-go" type="button">Write the differences</button></p>
+          <p><button id="restore-go" type="button">Restore</button></p>
         </section>
       </div>
 
       <section class="block">
-        <h2>Reset the service config</h2>
+        <h2>Reset Settings to Default</h2>
         <div class="pairs">
           <div>
-            <h3>Keeps</h3>
+            <h3>Kept</h3>
             <ul>
-              <li>the management IP and the second address</li>
-              <li>the VLAN and the PLOAM password</li>
+              <li>Management IP and second address</li>
+              <li>VLAN and PLOAM password</li>
               <li><code>GPON_SN</code>, <code>MAC_KEY</code>, <code>ELAN_MAC_ADDR</code></li>
-              <li>every key the defaults file does not name</li>
-              <li>this page&rsquo;s sign-in and the SSH keys</li>
+              <li>Keys not in the default file</li>
+              <li>Password of this page and SSH keys</li>
             </ul>
           </div>
           <div>
-            <h3>Resets</h3>
+            <h3>Reset</h3>
             <ul>
-              <li>the four LOID keys, emptied</li>
-              <li><code>DEVICE_TYPE</code>, <code>DUAL_MGMT_MODE</code> and the three
-                  <code>OMCI_CUSTOM</code> masks, which the stock firmware reads
-                  (this image reads one bit of <code>OMCI_CUSTOM_ME</code>, the VEIP slot, which reset clears)</li>
+              <li>LOID keys (cleared)</li>
+              <li><code>DEVICE_TYPE</code>, <code>DUAL_MGMT_MODE</code> and the <code>OMCI_CUSTOM</code> masks (used by the stock firmware; this image uses the VEIP slot bit of <code>OMCI_CUSTOM_ME</code>)</li>
             </ul>
           </div>
         </div>
         <div class="formrow">
-          <label>Backup password <input id="reset-pass" type="password" autocomplete="new-password"></label>
-          <label>Again <input id="reset-pass2" type="password" autocomplete="new-password"></label>
+          <label>Backup Password <input id="reset-pass" type="password" autocomplete="new-password"></label>
+          <label>Confirmed Password <input id="reset-pass2" type="password" autocomplete="new-password"></label>
         </div>
-        <p class="help">A backup downloads first; the reset does not start until your browser has the file.
-           With a password it is encrypted; with both fields empty it is a plain file.
-           The store is shared with the stock firmware in the other slot, so it is reset there too.</p>
+        <p class="help">A backup is downloaded before the reset (encrypted if a password is given). The settings are shared with the stock firmware in the other partition and are reset there too.</p>
         <details class="more">
-          <summary>Why this is not <code>flash_eraseall</code></summary>
-          <p>Reset merges the image defaults, <code>/etc/config_default.xml</code>,
-             into the service store with <code>flash default cs</code>; the LOID keys
-             then take effect when OMCI is applied. It rewrites the named keys
-             rather than erasing the partition, so <code>GPON_SN</code>,
-             <code>MAC_KEY</code>, <code>ELAN_MAC_ADDR</code> and this page&rsquo;s
-             credential survive. <code>flash_eraseall /dev/mtd3</code> &mdash; the
-             recipe every forum thread gives &mdash; takes all of it, and is why
-             people end up with sticks that never get past O0.</p>
+          <summary>Note</summary>
+          <p>The defaults in <code>/etc/config_default.xml</code> are merged with <code>flash default cs</code>. The partition is not erased, so <code>GPON_SN</code>, <code>MAC_KEY</code>, <code>ELAN_MAC_ADDR</code> and the password of this page are kept. Do not use <code>flash_eraseall /dev/mtd3</code>: it erases all of them.</p>
         </details>
-        <p><button id="reset-go" class="danger" type="button">Back up, then reset</button></p>
+        <p><button id="reset-go" class="danger" type="button">Reset</button></p>
         <div id="reset-out"></div>
       </section>
     </div>
@@ -667,28 +574,21 @@
     <div class="sub" id="s-logs" role="tabpanel" aria-labelledby="st-system-logs" data-sub="logs" hidden>
       <section class="block">
         <div class="block-head">
-          <h2>Kernel log</h2>
+          <h2>System Log</h2>
           <label class="check"><input id="log-heartbeat" type="checkbox"> Show heartbeats</label>
           <button id="log-reload" type="button">Refresh</button>
         </div>
-        <p class="help">The ring buffer the kernel and the boot scripts write to. To keep daemon logs, set a
-           <a href="#system/advanced">remote syslog server</a>.</p>
+        <p class="help">This page shows the kernel log buffer. To keep daemon logs, set a <a href="#system/advanced">remote syslog server</a>.</p>
         <div id="log-out"></div>
         <details class="more">
-          <summary>How it is read</summary>
-          <p>With <code>klogctl</code>, which reads the buffer without consuming it
-             &mdash; <code>cat /proc/kmsg</code> would eat the history and then
-             block. The daemons also log to <code>/var/log/omcid.log</code> and
-             <code>/var/log/services.log</code>, in RAM, over SSH, and to the
-             remote syslog server when one is set.</p>
+          <summary>Note</summary>
+          <p>Read with <code>klogctl</code>, without clearing the buffer. Daemon logs are in <code>/var/log/omcid.log</code> and <code>/var/log/services.log</code> (RAM, over SSH), and on the remote syslog server when set.</p>
         </details>
       </section>
 
       <section class="block">
-        <h2>Diagnostics bundle</h2>
-        <p class="help">Logs, the previous boot&rsquo;s kernel log, slot state and the config with every
-           password redacted, as one <code>.tar.gz</code> to attach to a bug report. The serial number
-           and MAC are kept. Takes a few seconds.</p>
+        <h2>Diagnostics</h2>
+        <p class="help">Download the logs, the kernel log of the previous boot, the slot state and the configuration (passwords removed) as one <code>.tar.gz</code> for a bug report. The serial number and MAC are included.</p>
         <p><a class="button" href="/api/diag" download>Download diagnostics</a></p>
       </section>
 
@@ -698,14 +598,10 @@
           <label>IPv4 address <input id="ping-host" autocomplete="off" inputmode="decimal" placeholder="192.168.1.254" maxlength="15"></label>
           <button id="ping-go" type="button">Ping</button>
         </div>
-        <p class="help">From the stick itself, over the management LAN. Addresses only: a name lookup would hang this page.</p>
+        <p class="help">Ping from the SFP over the management LAN. IP address only.</p>
         <details class="more">
-          <summary>Why not names</summary>
-          <p>With no route to a resolver, a name lookup would hang rather than
-             fail, and this daemon serves one request at a time. What a ping
-             answers here is whether the management path works in both
-             directions &mdash; worth knowing when this page loads but a scrape
-             does not.</p>
+          <summary>Note</summary>
+          <p>Host names are not supported: without a DNS route, a name lookup would block this page.</p>
         </details>
         <div id="ping-out"></div>
       </section>
@@ -721,11 +617,11 @@
     </div>
     <label id="confirmwrap" class="check" hidden>
       <input type="checkbox" id="confirm">
-      <span>Change keys the line authenticates on: <span id="confirmwhat"></span></span>
+      <span>Confirm the change of authentication keys: <span id="confirmwhat"></span></span>
     </label>
     <div class="saveacts">
-      <button id="discard" class="quiet" type="button">Discard</button>
-      <button id="save" class="primary" type="button">Save changes</button>
+      <button id="discard" class="quiet" type="button">Reset</button>
+      <button id="save" class="primary" type="button">Apply Changes</button>
     </div>
   </div>
   <div id="saveout"></div>
@@ -759,18 +655,18 @@
   <div class="wiz-foot">
     <button id="wizard-back" type="button">Back</button>
     <button id="wizard-next" class="primary" type="button">Next</button>
-    <button id="wizard-skip" class="quiet" type="button">Skip, I'll use Config</button>
+    <button id="wizard-skip" class="quiet" type="button">Skip</button>
   </div>
 </dialog>
 
 <!-- Following a reboot (firmware.js): modal and not closable, since nothing on
      the page works until the stick answers again. -->
 <dialog id="reboot-dialog" aria-labelledby="reboot-title">
-  <p id="reboot-title"><strong>Rebooting the stick</strong> <span id="reboot-secs"></span></p>
+  <p id="reboot-title"><strong>System restarting, please wait ...</strong> <span id="reboot-secs"></span></p>
   <div id="reboot-bar" class="progress" role="progressbar" aria-label="Reboot progress"
        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="reboot-fill" class="fill"></div></div>
   <p id="reboot-text" class="help" role="status"></p>
-  <p class="help">The fibre service comes back a little after this page.</p>
+  <p class="help">The PON service is back shortly after this page.</p>
   <div id="reboot-acts" class="switchrow" hidden>
     <button id="reboot-reload" class="primary" type="button">Reload</button>
   </div>
@@ -778,10 +674,8 @@
 
 <!-- Notes of the odi-oss releases newer than this image (updates.js). -->
 <dialog id="update-dialog" aria-labelledby="update-dialog-title">
-  <h2 id="update-dialog-title">Newer odi-oss releases</h2>
-  <p class="help">Nothing is downloaded or flashed from here. To install one, get its
-     image from the release page and load it on the
-     <a id="update-fw-link" href="#system/firmware">Firmware tab</a>.</p>
+  <h2 id="update-dialog-title">New odi-oss Releases</h2>
+  <p class="help">Nothing is downloaded from this page. Download the image from the release page and upload it in <a id="update-fw-link" href="#system/firmware">Firmware Update</a>.</p>
   <div id="update-list"></div>
   <div class="switchrow">
     <button id="update-close" class="primary" type="button">Close</button>

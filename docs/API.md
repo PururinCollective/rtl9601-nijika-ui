@@ -284,6 +284,17 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           400 {"ok":false,"error":...}; the one-copy
                                           setenv fallback needs that check too and runs
                                           only when nv prints its usage text
+    POST /api/firmware   action=swap&partition=N
+                                          Nijika Luna: `nijika boot N` (partition N
+                                          committed in both environment copies), then
+                                          a reboot, as for reboot. Only for the
+                                          partition that is not running and holds a
+                                          kernel the bootloader would boot, while no
+                                          write runs, on an image with `/bin/nijika`
+                                          (`/api/firmware` reports it as `nijika`);
+                                          otherwise 400 or 409, nothing changed. A
+                                          failed nijika answers {"ok":false,"error":
+                                          "<its output>"}
 
 ## Host port and safe mode (odi-oss)
 

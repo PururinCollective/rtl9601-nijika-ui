@@ -115,11 +115,11 @@ function ruleLane(r) {
   const tvid = (t, inner, outer) => (t === 4096 ? inner : t === 4097 ? outer : t);
 
   if (fo.PRI === 15 && fi.PRI === 14) {
-    return { fallback: 'single', discard, text: discard ? 'Any other VLAN is dropped.' : 'Any other VLAN passes as it is.' };
+    return { fallback: 'single', discard, text: discard ? 'Other VLANs are dropped.' : 'Other VLANs are forwarded unchanged.' };
   }
   if (fo.PRI === 14 && fi.PRI === 14) {
-    return { fallback: 'double', discard, text: discard ? 'Any other double-tagged frame is dropped.'
-      : 'Any other double-tagged frame passes as it is.' };
+    return { fallback: 'double', discard, text: discard ? 'Other double-tagged frames are dropped.'
+      : 'Other double-tagged frames are forwarded unchanged.' };
   }
   if (fo.PRI === 15 && fi.PRI === 15) {
     const from = 'untagged';
@@ -296,9 +296,9 @@ function serviceMap(mib, manual) {
   const footnotes = [...said.entries()].map(([text, us]) => `${text.replace(/\.$/, '')}: ${[...us].join(', ')}.`);
   if (away.length) {
     const ports = away.map((me) => me - 0x0100).sort((a, b) => a - b);
-    footnotes.push(`LAN port${ports.length > 1 ? 's' : ''} ${ports.join(', ')} of the HGU layout `
-      + `(PPTP ${away.map(hex4).join(', ')}): the OLT set ${ports.length > 1 ? 'them' : 'it'} up, `
-      + 'and the stick has one port, so nothing reaches them.');
+    footnotes.push(`LAN port${ports.length > 1 ? 's' : ''} ${ports.join(', ')} `
+      + `(PPTP ${away.map(hex4).join(', ')}): provisioned by the OLT, not available `
+      + '(the ONU has one port).');
   }
   /* A VLAN on the PPTP and the VEIP bridge alike: which one carries it up
      is the Luna service order (nijika order pptp|veip|mib, pptp by default);
@@ -309,9 +309,9 @@ function serviceMap(mib, manual) {
       both.push(l.router);
     }
   }
-  const notes = both.length ? [`${both.join(' and ')} ${both.length > 1 ? 'are' : 'is'} on the PPTP and the VEIP `
-    + 'bridge alike: upstream goes on the PPTP bridge\'s GEM port with the Luna default service order '
-    + '(nijika order pptp), on the VEIP\'s with nijika order veip; downstream both deliver.'] : [];
+  const notes = both.length ? [`${both.join(' and ')}: on both the PPTP and VEIP bridge. `
+    + 'Upstream uses the PPTP GEM port (default, nijika order pptp), or the VEIP GEM port '
+    + '(nijika order veip). Downstream is delivered by both.'] : [];
   return { bridges, lanes, fallbacks: footnotes, notes };
 }
 
@@ -376,17 +376,16 @@ function pill(cls, main, sub) {
 }
 
 const ACTION_WORDS = {
-  'as is': 'passes as it is', '+ tag': 'adds the tag', '− tag': 'takes the tag off', swap: 'swaps the VLAN',
-  '+ outer tag': 'adds an outer tag', '+ 2 tags': 'adds two tags', drop: 'drops it', rewrite: 'rewrites the tags',
+  'as is': 'forwarded unchanged', '+ tag': 'tag added', '− tag': 'tag removed', swap: 'VLAN translated',
+  '+ outer tag': 'outer tag added', '+ 2 tags': 'two tags added', drop: 'dropped', rewrite: 'tags rewritten',
 };
 
 function sentence(l) {
-  if (l.kind === 'MCAST') return 'Multicast from the OLT reaches the router as it is sent.';
-  if (l.action === 'drop') return `${l.router} from the router is dropped here.`;
-  const r = l.router === 'untagged' ? 'The router sends untagged frames' : `The router sends ${l.router}`;
+  if (l.kind === 'MCAST') return 'Multicast: forwarded from the OLT to the router unchanged.';
+  if (l.action === 'drop') return `Router ${l.router}: dropped.`;
+  const r = l.router === 'untagged' ? 'Router untagged' : `Router ${l.router}`;
   const o = l.olt === 'untagged' ? 'untagged' : l.olt;
-  if (l.action === 'as is') return `${r}; the stick passes them as they are, ${o} to the OLT, and back.`;
-  return `${r}; the stick ${ACTION_WORDS[l.action] || l.action}: ${o} to the OLT, and the reverse on the way back.`;
+  return `${r} <-> OLT ${o}: ${ACTION_WORDS[l.action] || l.action}.`;
 }
 
 function draw() {
@@ -397,7 +396,7 @@ function draw() {
   head.textContent = '';
   body.textContent = '';
   foot.textContent = '';
-  if (!MAP) { body.append(el('p', 'nj-note nj-pad', 'Reading the MIB…')); return; }
+  if (!MAP) { body.append(el('p', 'nj-note nj-pad', 'Reading MIB, please wait ...')); return; }
 
   const m = MAP.map;
   const needs = routerNeeds(m);
@@ -406,28 +405,28 @@ function draw() {
   const vl = needs.filter((x) => /^VLAN \d+$/.test(x)).map((x) => x.slice(5));
   const rest = needs.filter((x) => !/^VLAN \d+$/.test(x));
   const need = [...rest, ...(vl.length ? ['VLAN ' + vl.join(', ')] : [])].join(', ');
-  big.append(el('span', 'nj-crumb', 'Your router’s WAN'),
-    el('strong', null, need || (m.lanes.length ? 'Nothing reaches it' : 'No service yet')));
+  big.append(el('span', 'nj-crumb', 'Router WAN'),
+    el('strong', null, need || (m.lanes.length ? 'No service delivered' : 'No service')));
   const why = el('p', 'nj-note');
   why.textContent = MAP.manual.on
-    ? `Untagged: this stick tags VLAN ${MAP.manual.vid} itself (VLAN mode manual, GPON > VLAN), in place of the OLT's VLAN translation.`
-    : needs.length ? 'What the router’s WAN port sends and receives; the stick does the rest, as the lanes below show.'
-      : m.lanes.length ? 'Every service the OLT built stops on the way: the lanes below say where.'
-        : MAP.ok ? 'The OLT has provisioned no service on this ONU yet.' : 'The MIB could not be read.';
+    ? `Untagged. VLAN ${MAP.manual.vid} is tagged by the ONU (VLAN mode: manual, GPON > VLAN).`
+    : needs.length ? 'VLAN setting for the router WAN port. See each service below.'
+      : m.lanes.length ? 'No provisioned service is delivered to the router. See each service below.'
+        : MAP.ok ? 'No service provisioned by the OLT.' : 'Failed to read MIB.';
   head.append(big, why);
 
   if (!m.lanes.length) return;
   /* The three ends, the fibre and the cable between them, and what each
      third of a lane says. */
   const ends = el('div', 'nj-lane-track nj-ends');
-  ends.append(end('olt', MAP.olt || 'The OLT', 'the operator'), end('stick', 'This stick', 'GPON SFP'),
-    end('router', 'Your router', 'its WAN port'));
+  ends.append(end('olt', MAP.olt || 'OLT', 'Operator'), end('stick', 'ONU', 'GPON SFP'),
+    end('router', 'Router', 'WAN port'));
   const wires = el('div', 'nj-wires');
   wires.append(el('span', null, 'fibre'), el('span', null, 'cable'));
   ends.append(wires);
   const cols = el('div', 'nj-lane-track nj-lane-head');
-  cols.append(el('span', null, 'What the OLT set up'), el('span', null, 'What the stick does'),
-    el('span', null, 'What the router gets'));
+  cols.append(el('span', null, 'OLT Provisioning'), el('span', null, 'ONU Action'),
+    el('span', null, 'Router Side'));
   body.append(ends, cols);
   m.lanes.forEach((l, i) => {
     const row = el('div', 'nj-lane c' + (l.kind === 'MCAST' ? 'm' : i % 4) + (l.delivered ? '' : ' off')

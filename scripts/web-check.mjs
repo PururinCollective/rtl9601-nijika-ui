@@ -1394,6 +1394,15 @@ ok(slotKind({ slots: { 1: {} } }, '1').kind === 'unknown', 'an unreadable slot i
   t = await fwText({ ...trialFW, env: { sw_active: '1', sw_commit: '1', sw_tryactive: '2' }, exe: '/bin/confd',
                      slots: { 0: { kernel: 'Linux Kernel Image', built: 1600000000 } } });
   ok(/Try partition 0/.test(t) && !/Try partition 1/.test(t), 'committed, Try is offered on the other slot only');
+  /* Nijika Luna: Switch & Reboot (nijika boot <p>, then a reboot), with
+     nijika in the image, on the slot not running, when it holds a kernel. */
+  const swapFW = { ...trialFW, env: { sw_active: '1', sw_commit: '1', sw_tryactive: '2' }, exe: '/bin/confd' };
+  t = await fwText({ ...swapFW, nijika: true, slots: { 0: { kernel: 'Linux Kernel Image', built: 1600000000 } } });
+  ok((t.match(/Switch & Reboot/g) || []).length === 1, 'Nijika Luna: Switch & Reboot on the other slot only');
+  t = await fwText({ ...swapFW, nijika: true });
+  ok(!/Switch & Reboot/.test(t), 'Nijika Luna: no Switch & Reboot to a slot with no kernel');
+  t = await fwText({ ...swapFW, slots: { 0: { kernel: 'Linux Kernel Image', built: 1600000000 } } });
+  ok(!/Switch & Reboot/.test(t), 'Nijika Luna: no Switch & Reboot without nijika in the image');
   t = await fwText({ ...trialFW, env: { sw_active: '1', sw_commit: '1', sw_tryactive: '2' }, exe: '/bin/confd' });
   ok(!/Try partition/.test(t) && /holds no kernel the bootloader would boot/.test(t),
      'a slot with no uImage header gets no Try button, and says why');

@@ -45,7 +45,7 @@ const MENU = [
     { id: 'service', title: 'Service', panel: 'p-omci', subs: ['o-services'], show: () => { renderService(); renderServices(); } },
     { id: 'topology', title: 'OMCI Topology', panel: 'p-omci', subs: ['o-mib'], show: () => { renderTopology(); renderMeBrowser(); } },
     { id: 'phone', title: 'Phone', panel: 'p-omci', subs: ['o-phone'], show: () => renderPhone() },
-    { id: 'hood', title: 'Under the hood', panel: 'p-status' },
+    { id: 'hood', title: 'Statistics', panel: 'p-status' },
   ] },
   { id: 'network', title: 'Network', items: [
     { id: 'lan', title: 'LAN', panel: 'p-config', subs: ['c-network'], config: ['network'] },
