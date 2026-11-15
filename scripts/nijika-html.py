@@ -84,7 +84,7 @@ omci_subs=omci_subs.replace(svcs_old, '''      <!-- Nijika: the services as lane
 fw_old='accept=".tar,application/x-tar"'
 assert fw_old in system_subs
 # Nijika: the firmware picker offers .image too, the name Nijika Luna gives
-# its image tarballs (nijika-luna-<version>-dev.image, -distribution.image).
+# its image tarballs (nijika-luna-<version>-dev.image, -oem.image).
 system_subs=system_subs.replace(fw_old, 'accept=".image,.tar,application/x-tar"')
 
 vlan_old='''      <div class="settings" id="set-vlan"></div>
