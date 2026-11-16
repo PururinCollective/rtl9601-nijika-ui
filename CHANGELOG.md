@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Nijika Luna: System > Advanced switches the neighbour announcements, `LLDP_ENABLE` and
+  `MNDP_ENABLE` (odi-only keys of the Luna image, on unless `0`): LLDP and MikroTik MNDP
+  frames on the link to the router, so it lists the stick and its address. Class `live`,
+  action `none`: the announcer reads them every 5 s, nothing is run after a save.
 - Nijika UI: GPON > ONT Identity says what Device Emulation presents to the OLT, an HGU with
   its LAN ports or an SFU, from the `type` and `lan` of each preset (`nj-presets.js`, generated
   from rtl9601-nijika-luna `presets/ont.tsv`). The Luna image follows it with
