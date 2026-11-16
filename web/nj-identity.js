@@ -25,6 +25,11 @@ const OMCC = [128, 129, 130, 131, 132, 133, 134, 150, 160, 161, 162, 163, 176, 1
   .map((n) => [String(n), '0x' + n.toString(16).toUpperCase() + ' (' + n + ')']);
 const TM = [['0', '0, priority controlled'], ['1', '1, rate controlled'], ['2', '2, priority and rate controlled']];
 const POTS = [['0', '0, no phone port'], ['1', '1 phone port'], ['2', '2 phone ports']];
+
+/* What the ONU presents itself as with a preset: omcid with OMCI_HGU_MIB=auto,
+   the image default, takes the type and the Ethernet ports of the preset whose
+   model is stored (/etc/ont-modes); a model that is no preset's is an HGU of 4. */
+const kindOf = (p) => (p.type === 'sfu' ? 'SFU, 1 LAN port' : `HGU, ${p.lan} LAN ports`);
 const UNKNOWN = [['0', '0, the standard unknown-entity error'], ['1', '1, answer with success']];
 
 /*
@@ -210,8 +215,11 @@ function sync() {
   const p = PRESETS.find((x) => x.name === MODE);
   UI.status.textContent = custom
     ? (idKeys.length ? 'Custom values, not saved.' : 'Custom: all fields can be edited.')
-    : idKeys.length ? `${p.label}: not saved. Click Apply Changes.`
-      : `Current: ${p.label}.`;
+    : idKeys.length ? `${p.label} (${kindOf(p)}): not saved. Click Apply Changes.`
+      : `Current: ${p.label} (${kindOf(p)}).`;
+  UI.kindNote.textContent = custom
+    ? 'Presented to the OLT as the preset with this Product Class, or as an HGU with 4 LAN ports.'
+    : `Presented to the OLT as an ${kindOf(p).replace(',', ' with')}.`;
   /* The serial number's vendor and the vendor id may differ on this image:
      the OLT authenticates the serial number, and reads the vendor id. */
   const sn = String(S.VALUES.GPON_SN || '');
@@ -245,8 +253,9 @@ function renderIdentity() {
   sel.append(oc);
   sel.addEventListener('change', () => pick(sel.value));
   const status = el('p', 'nj-note');
+  const kindNote = el('p', 'nj-note');
   const right = el('div');
-  right.append(sel, status);
+  right.append(sel, status, kindNote);
   top.append(lab, right);
   form.append(top);
 
@@ -282,7 +291,7 @@ function renderIdentity() {
   }
   card.append(form);
   host.append(card);
-  UI = { sel, status, ctl, err, rows, vendorNote };
+  UI = { sel, status, kindNote, ctl, err, rows, vendorNote };
   MODE = null;
   CHOSEN = false;
   sync();
@@ -309,4 +318,4 @@ function wireIdentity() {
   }
 }
 
-export { renderIdentity, wireIdentity, resetIdentity, presetOf, presetValues, fieldProblem, FIELDS, KEYS };
+export { renderIdentity, wireIdentity, resetIdentity, presetOf, presetValues, fieldProblem, kindOf, FIELDS, KEYS };

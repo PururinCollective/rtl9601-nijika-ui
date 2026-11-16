@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Nijika UI: GPON > ONT Identity says what Device Emulation presents to the OLT, an HGU with
+  its LAN ports or an SFU, from the `type` and `lan` of each preset (`nj-presets.js`, generated
+  from rtl9601-nijika-luna `presets/ont.tsv`). The Luna image follows it with
+  `OMCI_HGU_MIB=auto`; a preset writes no key for it.
 - Nijika UI: the odi-ui link check under Registration on Status > Statistics: `nijika.js` polls
   it as `app.js` does on the odi-ui page (two omcicli runs at most once a minute, in O5, on
   odi-oss). The System > Logs note says the kernel log is read from `/dev/kmsg`, with the time

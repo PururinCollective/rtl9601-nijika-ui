@@ -117,6 +117,11 @@ eq([hg.OMCI_POTS_PORTS, I.presetValues(PRESETS.find((p) => p.name === 'nijika'))
 'a preset sets the phone ports the device has');
 eq('OMCC_VER' in I.presetValues(PRESETS.find((p) => p.name === 'hg8240h5')), false,
   'a preset with no OMCC version keeps the stored one');
+eq(PRESETS.map((p) => p.name + ' ' + I.kindOf(p)).filter((x) => x.includes('SFU')),
+  ['eg8010gv6 SFU, 1 LAN port', 'nijika SFU, 1 LAN port'], 'the SFU presets, each with one LAN port');
+eq(I.kindOf(PRESETS.find((p) => p.name === 'hg8240h')), 'HGU, 4 LAN ports', 'the HG8240H is an HGU of 4');
+eq(Object.keys(I.presetValues(PRESETS.find((p) => p.name === 'hg8240h'))).some((k) => /HGU|LAN/.test(k)), false,
+  'the type and the ports write no key: omcid reads them off the model');
 eq(I.fieldProblem(I.FIELDS.find((f) => f.id === 'vendor'), 'AB', null), 'exactly 4 characters', 'vendor id is 4 characters');
 eq(I.fieldProblem(I.FIELDS.find((f) => f.id === 'vendor'), 'HWTC', null), null, 'a 4-character vendor id passes');
 
