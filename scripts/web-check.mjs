@@ -351,6 +351,17 @@ ok(true, 'renderStatus runs against a diag capture');
   renderStatus('', { celsius: 52.4 }, { uptime: '14105' });
   ok(textOf(doc.querySelector('#stick')) === 'Uptime3 h 55 minChip temperature (SoC)52.4 \u00b0C',
      'uptime: first in the Stick block, the chip temperature under it');
+  const lineup = () => doc.querySelector('#lineup');
+  const o5 = 'RTK.0> gpon get onu-state\n  Operation State(O5)\n';
+  renderStatus(o5, null, { in_state_s: '11520' });
+  ok(textOf(lineup()) === 'Line up3 h 12 min' && lineup().hidden === false,
+     'line up: in O5, the time since the line last came up');
+  renderStatus('RTK.0> gpon get onu-state\n  Operation State(O2)\n', null, { in_state_s: '75' });
+  ok(textOf(lineup()) === 'In O21 min', 'line up: outside O5, named by the state it times');
+  renderStatus(o5, null, { uptime: '14105' });
+  ok(lineup().hidden === true && textOf(lineup()) === '', 'line up: no member, no row');
+  renderStatus('', null, { in_state_s: '600' });
+  ok(lineup().hidden === true, 'line up: no state from diag, no row');
 }
 
 /* --- the stick diagram on top of the Status tab (overview.js) ------------ */
@@ -466,6 +477,58 @@ ok(true, 'renderStatus runs against a diag capture');
     ok(ponLoad({ ds_superframe: '5', ds_gem_idle: 'x' }) === null && ponLoad(s(80005, half)) === null,
        'pon load: a member that is not a number starts over');
     ponLoad(null);
+    /* The one-second refresh: reads a second apart against a driver that
+       samples once a second. */
+    const q = 8000 * 36432 / 5 / 2;   /* idle frames of one second at 50 % */
+    ok(ponLoad(s(500000, 1000)) === null, 'pon load (1 s): the first read gives no figure');
+    t += 1000;
+    ok(Math.abs(ponLoad(s(508000, 1000 + q)).pct - 50) < 1e-9, 'pon load (1 s): one sample later, a figure');
+    t += 1000;
+    ok(Math.abs(ponLoad(s(508000, 1000 + q)).pct - 50) < 1e-9,
+       'pon load (1 s): the same driver sample again keeps the last figure');
+    t += 1000;
+    ok(Math.abs(ponLoad(s(524000, 1000 + 3 * q)).pct - 50) < 1e-9,
+       'pon load (1 s): two samples in a window measured from the read before still count');
+    t += 1000;
+    ok(Math.abs(ponLoad(s(540000, 1000 + 5 * q)).pct - 50) < 1e-9,
+       'pon load (1 s): two driver samples between reads a second apart are not a re-lock');
+    t += 1000;
+    ok(ponLoad(s(540000 + 40000, 1000 + 10 * q)) === null,
+       'pon load (1 s): five samples in a second (a re-lock) give no figure');
+    ponLoad(null);
+  }
+  /* The one-second fibre rates from /api/ponload's octet counters. */
+  {
+    const { liveFibreRates } = await import(join(root, 'web', 'overview.js'));
+    const o = (a, b) => ({ pon_in_octets: String(a), pon_out_octets: String(b) });
+    liveFibreRates({});
+    t += 20000;
+    ok(liveFibreRates(o(1000000, 500000)) === null, 'live rates: the first read gives no figure');
+    t += 1000;
+    let r = liveFibreRates(o(1500000, 530000));
+    ok(r && r.down === 500000 && r.up === 30000, 'live rates: a second later, bytes per second down and up');
+    ok(textOf(doc.querySelector('#overview .ov-glass')) === '\u2193 500.0 kB/s\u2191 30.0 kB/s',
+       'live rates: the fibre line is drawn from it');
+    t += 2000;
+    r = liveFibreRates(o(2500000, 590000));
+    ok(r && r.down === 500000 && r.up === 30000, 'live rates: a two second gap is divided by its length');
+    t += 1000;
+    ok(liveFibreRates(o(100, 590000)) === null, 'live rates: a counter that went backwards gives no figure');
+    t += 1000;
+    r = liveFibreRates(o(1100, 591000));
+    ok(r && r.down === 1000 && r.up === 1000, 'live rates: and the next read measures from the backwards one');
+    t += 30000;
+    ok(liveFibreRates(o(5000, 595000)) === null, 'live rates: a gap of 30 s (tab in the background) gives no figure');
+    t += 1000;
+    ok(liveFibreRates({ ok: true }) === null, 'live rates: members absent give no figure');
+    t += 1000;
+    ok(liveFibreRates(o(6000, 596000)) === null, 'live rates: and the read after absent members starts over');
+    t += 1000;
+    liveFibreRates(o('18446744073709550615', 0));
+    t += 1000;
+    r = liveFibreRates(o('18446744073709551615', 0));
+    ok(r && r.down === 1000, 'live rates: a counter above 2^53 is read whole');
+    liveFibreRates({});
   }
   Date.now = realNow;
 }
@@ -576,8 +639,8 @@ ok(true, 'renderStatus runs against a diag capture');
   const head = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   const bars = [...head.matchAll(/<div id="(\w+)" class="trial([^"]*)"/g)]
     .map((m) => ({ id: m[1], rank: /\bhot\b/.test(m[2]) ? 0 : /\bupdate\b/.test(m[2]) ? 2 : 1 }));
-  ok(bars.map((b) => b.id).join() === 'chipbanner,trialbanner,safebanner,fallbackbanner,updatebanner',
-     'bars: critical chip bar, then trial boot, safe mode, fallback, then the release notice');
+  ok(bars.map((b) => b.id).join() === 'chipbanner,trialbanner,safebanner,reseedbanner,fallbackbanner,updatebanner',
+     'bars: critical chip bar, then trial boot, safe mode, recreated settings, fallback, then the release notice');
   ok(bars.every((b, i) => i === 0 || bars[i - 1].rank <= b.rank),
      'bars: red first, then the yellow stripes, then the blue notice, never the other way round');
   ok((head.match(/class="trial/g) || []).length === bars.length, 'bars: every header bar is in that list');
@@ -1187,15 +1250,19 @@ ok(slotKind({ slots: { 1: {} } }, '1').kind === 'unknown', 'an unreadable slot i
   renderTrial();
   ok(/breadcrumbs\.on is present: temporary debug logging/.test(textOf(dev)) && !dev.children[0].classList.contains('warn'),
      'breadcrumbs.on is a quiet note, not a warning');
+  /* Half committed: fwu.sh refuses every write until both copies agree, and
+     nv commit is what makes them agree, so the banner offers it here too. */
   st.S.FW = { env: { sw_active: '0', sw_commit: '0' }, fallback: { sw_commit: '1' }, dev_confirm_arp: '10.0.0.1' };
   renderTrial();
-  ok(dev.children.length === 0, 'without a Commit action the banner carries no development note');
+  ok(doc.querySelector('#trial-commit').hidden === false,
+     'a half commit offers Commit too, so both copies can be made to agree');
+  ok(/confirm-arp is set/.test(textOf(dev)), 'with the development note beside it');
   st.S.FW = keepFW;
 }
 
 /* --- the host-link banner and the Host port control ------------------------- */
 {
-  const { bannerText, trialLeft, renderHostlink } = await import(join(root, 'web', 'hostlink.js'));
+  const { bannerText, trialLeft, renderHostlink, wireHostlink } = await import(join(root, 'web', 'hostlink.js'));
   const keep = API['/api/hostlink'];
   const st = (o) => ({ setting: 'on', running: 'on', phase: 'steady', fallback: '0', ...o });
 
@@ -1238,6 +1305,7 @@ ok(slotKind({ slots: { 1: {} } }, '1').kind === 'unknown', 'an unreadable slot i
   ok(banner.hidden === false && doc.querySelector('#hostlink-ack').hidden === false,
      'host link: the safe-mode bar renders, with its Acknowledge button');
   ok(textOf(doc.querySelector('#safe-text')).includes('safe-mode boot happened'), 'host link: and its text');
+  ok(doc.querySelector('#reseedbanner').hidden === true, 'recreated store: no record, the bar stays down');
   ok(doc.querySelector('#fallbackbanner').hidden === false
      && doc.querySelector('#safebanner').className === doc.querySelector('#trialbanner').className,
      'host link: the bars are the trial-boot band, and the fallback bar shows beside it');
@@ -1258,6 +1326,41 @@ ok(slotKind({ slots: { 1: {} } }, '1').kind === 'unknown', 'an unreadable slot i
   API['/api/hostlink'] = { supported: false, state: {}, safemode: null, link: '', uptime: '1' };
   await renderHostlink();
   ok(doc.querySelector('#hostlink').hidden === true, 'host link: no block on an image without host-autoneg.sh');
+
+  /* The recreated-store bar: shown from the record, on an image without the
+     Host port block too; Acknowledge posts reseed-ack, a refusal is said in
+     the bar, and the bar goes once the record is gone. */
+  API['/api/hostlink'] = { supported: false, state: {}, safemode: null,
+                           reseed: { files: 'lastgood_hs.xml', build: 'v1.17.0', uptime: '9' }, link: '', uptime: '30' };
+  await renderHostlink();
+  const rb = doc.querySelector('#reseedbanner');
+  ok(rb.hidden === false && rb.className === doc.querySelector('#trialbanner').className,
+     'recreated store: the bar renders, the same band as the trial boot');
+  ok(/^Settings recreated\. The config store/.test(textOf(doc.querySelector('#reseed-text')))
+     && doc.querySelector('#reseed-text').children[0].tagName === 'strong'
+     && textOf(doc.querySelector('#reseed-text').children[0]) === 'Settings recreated.',
+     'recreated store: one line with a bold head');
+  ok(/<a class="button" href="#config\/line">Line settings<\/a>\s*<a class="button" href="#system\/backup">/.test(html)
+     && /data-sub="line"/.test(html) && /data-sub="backup"/.test(html),
+     'recreated store: the bar has buttons to the Line settings and to Backup & reset, which exist');
+  wireHostlink();
+  const posted = [];
+  const keepFetchR = globalThis.fetch;
+  let answer = { ok: false, output: '', error: 'this image has no /etc/scripts/config-reseed.sh' };
+  globalThis.fetch = async (path, opts) => {
+    if (opts && opts.method === 'POST') { posted.push(String(opts.body)); return { ok: true, json: async () => answer }; }
+    return keepFetchR(path, opts);
+  };
+  await doc.querySelector('#reseed-ack').onclick();
+  ok(posted.join() === 'action=reseed-ack', 'recreated store: Acknowledge posts reseed-ack, nothing else');
+  ok(rb.hidden === false && /config-reseed\.sh/.test(textOf(doc.querySelector('#reseed-out'))),
+     'recreated store: a refused acknowledgement is said in the bar, which stays');
+  answer = { ok: true, output: '' };
+  API['/api/hostlink'] = { supported: false, state: {}, safemode: null, reseed: null, link: '', uptime: '31' };
+  await doc.querySelector('#reseed-ack').onclick();
+  globalThis.fetch = keepFetchR;
+  ok(rb.hidden === true && textOf(doc.querySelector('#reseed-out')) === '',
+     'recreated store: acknowledged, the record is gone and so is the bar');
   API['/api/hostlink'] = keep;
 
   /* The SerDes mode (odi-oss HOST_SERDES, host-serdes.sh). */
@@ -1277,6 +1380,27 @@ ok(slotKind({ slots: { 1: {} } }, '1').kind === 'unknown', 'an unreadable slot i
     b = bannerText({ supported: true, state: st({}), safemode_now: { short_boots: '3', cleared: c }, safemode: null });
     ok(!/cleared the host port|turned off/.test(b.safe), `safe mode: cleared=${c || '(empty)'} claims nothing was cleared`);
   }
+  /* A config store recreated at boot (config-reseed.sh): its own bar, on any image. */
+  b = bannerText({ supported: false, state: {}, safemode: null, reseed: null });
+  ok(!b.show && b.reseed === null, 'recreated store: no record, no bar');
+  b = bannerText({ supported: false, state: {}, safemode: null,
+                   reseed: { files: 'lastgood_hs.xml', build: 'v1.17.0', uptime: '9' } });
+  ok(b.show && !b.safe && !b.ack && /^Settings recreated\./.test(b.reseed) && /\(lastgood_hs\.xml\)/.test(b.reseed)
+     && /serial number is empty/.test(b.reseed) && /off the fibre \(PON\)/.test(b.reseed)
+     && /restore a backup/.test(b.reseed) && b.reseed.length < 240,
+     'recreated store: the HS file says the serial is empty and the PON stays down, in one short line');
+  b = bannerText({ supported: true, state: st({}), safemode: null, reseed: { files: 'lastgood.xml lastgood_hs.xml' } });
+  ok(/\(lastgood\.xml and lastgood_hs\.xml\)/.test(b.reseed) && /serial number is empty/.test(b.reseed),
+     'recreated store: both files are named, and the serial still decides the text');
+  b = bannerText({ supported: true, state: st({}), safemode: null, reseed: { files: 'lastgood.xml' } });
+  ok(/\(lastgood\.xml\)/.test(b.reseed) && /PLOAM password/.test(b.reseed) && !/serial number/.test(b.reseed),
+     'recreated store: the CS file alone does not claim the serial is empty');
+  b = bannerText({ supported: true, state: st({}), safemode: null, reseed: {} });
+  ok(b.show && /^Settings recreated\./.test(b.reseed) && !/lastgood/.test(b.reseed) && /serial number is empty/.test(b.reseed),
+     'recreated store: a record that names no file still shows, as the worse case');
+  b = bannerText({ supported: true, state: st({}), safemode_now: null, safemode: { short_boots: '3' },
+                   reseed: { files: 'lastgood_hs.xml' } });
+  ok(b.safe && b.ack && b.reseed, 'recreated store: beside a safe-mode record, two bars');
   b = bannerText({ supported: false, state: {}, serdes: sd({ setting: '2500basex', running: 'fiber1g', fallback: '1' }), safemode: null });
   ok(b.show && !b.safe && /^Host mode fallback\./.test(b.fallback) && /set to 2\.5G/.test(b.fallback) && /Fiber 1G/.test(b.fallback),
      'host mode: the boot fallback of 2.5G raises its bar, even on an image without host-autoneg.sh');
@@ -1522,6 +1646,17 @@ ok(slotKind({ slots: { 1: {} } }, '1').kind === 'unknown', 'an unreadable slot i
   ok(!/Try partition/.test(t), 'mid-trial, neither slot offers Try: one is running, the other is what the next boot is anyway');
   ok(/Commit to partition 1/.test(t) && !/Keep/.test(t), 'the running, uncommitted slot offers Commit to partition 1');
   ok(/Committed/.test(t) && !/Kept/.test(t), 'and the committed slot is badged Committed');
+  /* An armed trial that has not booted can be taken back, and its slot is
+     not offered for a write (the daemon refuses one until it is cancelled). */
+  t = await fwText({ env: { sw_active: '0', sw_commit: '0', sw_tryactive: '1' }, fallback: {},
+                     slots: { 1: { kernel: 'Linux-6.18.63', built: 1794000000 } }, exe: '/bin/confd' });
+  ok(/Trial pending/.test(t) && /Cancel the trial/.test(t) && !/Try partition 1/.test(t),
+     'a pending trial offers Cancel instead of Try');
+  ok(/Cancel it to write here/.test(t) && !/Write the uploaded image here/.test(t),
+     'and its partition is not offered for a write');
+  t = await fwText({ env: { sw_active: '0', sw_commit: '0', sw_tryactive: '1' }, fallback: {},
+                     slots: {}, exe: '/bin/confd' });
+  ok(/Cancel the trial/.test(t), 'a pending trial of a slot whose kernel cannot be read can still be cancelled');
   t = await fwText({ ...trialFW, exe: '/etc/config/confd/confd' });
   ok(/override in \/etc\/config is in use/.test(t), 'a confd run from /etc/config is an override');
   t = await fwText({ ...trialFW, env: { sw_active: '1', sw_commit: '1', sw_tryactive: '2' }, exe: '/bin/confd',
@@ -1568,9 +1703,11 @@ ok(slotKind({ slots: { 1: {} } }, '1').kind === 'unknown', 'an unreadable slot i
   };
   globalThis.confirm = () => true;
   let atPost = null;
+  let postBody = '';
   globalThis.fetch = async (path, opts) => {
     if (!(opts && opts.method === 'POST')) return keepFetch(path, opts);
     atPost = { disabled: btn0.disabled, title: btn0.title };
+    postBody = String(opts.body || '');
     return { ok: true, status: 200, json: async () => ({ ok: true }) };
   };
   await fwm.writeImage('0', idleFW);
@@ -1581,6 +1718,8 @@ ok(slotKind({ slots: { 1: {} } }, '1').kind === 'unknown', 'an unreadable slot i
   ok(rebootBtn() !== btn0 && !rebootBtn().disabled, 'reboot: and the render after the write turns it on');
   ok(atPost && atPost.disabled === true && /being written/.test(atPost.title),
      'reboot: the button is already off while the write request is pending');
+  ok(/(^|&)action=write(&|$)/.test(postBody) && /(^|&)md5=/.test(postBody),
+     'write: the request names the md5 of the upload it means');
   /* A request that fails or is refused gives the button back. */
   for (const post of [async () => ({ ok: true, json: async () => ({ ok: false, error: 'refused' }) }),
                       async () => { throw new Error('network'); }]) {
@@ -1596,6 +1735,16 @@ ok(slotKind({ slots: { 1: {} } }, '1').kind === 'unknown', 'an unreadable slot i
   await fwText({ ...idleFW, write: { state: 'unknown', pid: '4242', slot: '0', rc: '', log: '' } });
   ok(rebootBtn().disabled === false && /ended without recording a result/.test(textOf(doc.querySelector('#parts'))),
      'reboot: an unknown write result leaves Reboot on and says the writer is gone');
+
+  /* The write log keeps only the last redraw of a \r progress line, so the
+     erase progress is one short line and not thousands run together. */
+  const erase = 'fwu: erasing /dev/mtd7\n\rErasing 4 Kibyte @ 0 -  0% complete.'
+    + '\rErasing 4 Kibyte @ 23c000 - 91% complete.\rErasing 4 Kibyte @ 23d000 - 91% complete.\r\n'
+    + 'fwu: writing rootfs to /dev/mtd7\r\n';
+  ok(fwm.writeLogText(erase) === 'fwu: erasing /dev/mtd7\nErasing 4 Kibyte @ 23d000 - 91% complete.\n'
+     + 'fwu: writing rootfs to /dev/mtd7', 'write log: a \\r progress line shows only its last state');
+  ok(fwm.writeLogText('a\nb\n') === 'a\nb' && fwm.writeLogText(undefined) === '',
+     'write log: plain lines are kept, and no log is an empty one');
 
   const keepSleep = fwm.followDeps.sleep;
   fwm.followDeps.sleep = () => new Promise(() => {});
@@ -1670,7 +1819,8 @@ const common = '#common';
 ok(rowsOf(common).length === SETT.length,
    `Config shows exactly the ${SETT.length} keys this image reads`);
 const classTags = tagsOf(common).filter((t) => Object.values(state.CLASS_LABEL).includes(t));
-ok(classTags.length === SETT.length, 'and every one of them carries its apply class');
+ok(classTags.length === SETT.filter((r) => !r.pair).length,
+   'and every one of them carries its apply class, but a key written with its pair');
 ok(tagsOf(common).includes('Interrupts internet') && tagsOf(common).includes('Live')
    && tagsOf(common).includes('Reboot'), 'the classes are the ones SETTINGS.md names');
 const pairs = SETT.filter((r) => r.pair).length;
@@ -2055,6 +2205,32 @@ EDITS.clear();
       return f;
     };
     const vidRow = () => rowsOf('#set-vlan').find((r) => r.dataset.name === 'VLAN_MANU_TAG_VID');
+    {
+      /* A PLOAM password shorter than 10 octets is zero-padded, the way the wizard stores it. */
+      const ploamAside = () => {
+        let t = null;
+        walk(doc.querySelector('#set-line'), (x) => {
+          if (x.dataset && x.dataset.name === 'GPON_PLOAM_PASSWD') {
+            walk(x, (y) => { if (y.className === 's-aside') t = textOf(y); });
+          }
+        });
+        return t;
+      };
+      const was = S.VALUES.GPON_PLOAM_PASSWD;
+      S.VALUES.GPON_PLOAM_PASSWD = '44454641554c54000000';
+      renderAll();
+      ok(ploamAside() === 'Reads as “DEFAULT”, padded with zero bytes', 'PLOAM aside: zero padding is read past');
+      S.VALUES.GPON_PLOAM_PASSWD = '31323334353637383930';
+      renderAll();
+      ok(ploamAside() === 'Reads as “1234567890”', 'PLOAM aside: a full 10 characters read as they are');
+      S.VALUES.GPON_PLOAM_PASSWD = '00000000000000000000';
+      renderAll();
+      ok(ploamAside() === 'Not printable ASCII', 'PLOAM aside: all zero bytes are not text');
+      S.VALUES.GPON_PLOAM_PASSWD = '01000000000000000000';
+      renderAll();
+      ok(ploamAside() === 'Not printable ASCII', 'PLOAM aside: a control byte before the padding is not text');
+      S.VALUES.GPON_PLOAM_PASSWD = was;
+    }
     renderAll();
     {
       /* The serial number field takes a modem ID and shows the stored form. */

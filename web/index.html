@@ -73,6 +73,16 @@
     <a id="safe-details" href="#system/access">Details</a>
     <button id="hostlink-ack" type="button" hidden>Acknowledge</button>
   </div>
+  <!-- The config store was recreated from the image defaults at boot (odi-oss
+       config-reseed.sh): the serial number is empty and the PON stays down
+       until it is set. Stays until acknowledged. -->
+  <div id="reseedbanner" class="trial" role="status" hidden>
+    <p id="reseed-text"></p>
+    <a class="button" href="#config/line">Line settings</a>
+    <a class="button" href="#system/backup">Backup &amp; reset</a>
+    <button id="reseed-ack" type="button">Acknowledge</button>
+    <div id="reseed-out"></div>
+  </div>
   <div id="fallbackbanner" class="trial" role="status" hidden>
     <p id="fallback-text"></p>
     <a href="#config/network">Host port settings</a>
@@ -118,7 +128,11 @@
           <div id="linkcheck" hidden>
             <ol class="stages" id="lc-stages" aria-label="Link check"></ol>
             <p class="state-note" id="lc-finding"></p>
+            <p class="help" id="lc-help" hidden>Asking for help with this?
+               <a href="/api/diag" download>Download the diagnostics bundle</a> and attach it;
+               <a href="#system/logs">System &rsaquo; Logs</a> says what to write with it.</p>
           </div>
+          <dl class="env" id="lineup" hidden></dl>
           <dl class="env" id="ranging" hidden></dl>
           <p class="callout bad" id="losnote" hidden></p>
         </section>
@@ -657,9 +671,19 @@
       <section class="block">
         <h2>Diagnostics bundle</h2>
         <p class="help">Logs, the previous boot&rsquo;s kernel log, slot state and the config with every
-           password redacted, as one <code>.tar.gz</code> to attach to a bug report. The serial number
-           and MAC are kept. Takes a few seconds.</p>
+           password redacted, as one <code>.tar.gz</code> to attach to a bug report. The serial number,
+           the MACs and the LOID are masked to their last four characters, so the bundle can go in a
+           public issue. <code>SUMMARY.txt</code> inside is one screen of the main facts. Takes a few seconds.</p>
         <p><a class="button" href="/api/diag" download>Download diagnostics</a></p>
+        <details class="more">
+          <summary>What to write with it</summary>
+          <p>The bundle cannot tell these. Copy the lines into the report and fill them in:</p>
+          <pre>ISP and line type (GPON, the OLT vendor if known):
+Router behind the stick, and how it connects (VLAN, PPPoE or DHCP):
+What was changed, and when:
+What was seen (no sync, drops, slow), and since when:
+Does the stock firmware work on the same line:</pre>
+        </details>
       </section>
 
       <section class="block">

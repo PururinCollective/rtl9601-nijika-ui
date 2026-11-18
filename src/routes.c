@@ -172,6 +172,21 @@ static const char *key_refusal(const char *name, const char *value,
 }
 
 /*
+ * Stock keys that can be emptied. Empty is their default in the store
+ * template: no LOID for an OLT that asks for none, no PLOAM password for one
+ * that authenticates on the serial number alone. The odi-oss flash stores an
+ * empty value for a stock key; the stock flash refuses it, and the failed
+ * write says so. GPON_SN is not here: a stick without a serial does not
+ * range. web/validate.js keeps the same list.
+ */
+static int empty_ok_key(const char *name)
+{
+	return seq(name, "LOID") || seq(name, "LOID_PASSWD") ||
+	       seq(name, "LOID_OLD") || seq(name, "LOID_PASSWD_OLD") ||
+	       seq(name, "GPON_PLOAM_PASSWD");
+}
+
+/*
  * The six keys of the management interface (confd.h, NETADDR_*), which a trial
  * writes and /api/config does not: the five of the address, and the static
  * routes beside them.
@@ -242,7 +257,7 @@ static void handle_write(int conn, const char *body)
 	char name[128], value[VALUE_MAX + 1], got[VALUE_MAX + 1], addr[160];
 	char type[32], writable[32], apply[32];
 	unsigned long i = 0;
-	int first = 1, confirm = 0;
+	int first = 1, confirm = 0, wrote;
 	int any_omci = 0, any_reboot = 0, any_untraced = 0, omci_interrupts = 0;
 	int need_net = 0, any_stock = 0, need_syslog = 0, need_ntp = 0, need_igmp = 0, need_sfp = 0;
 
@@ -256,19 +271,23 @@ static void handle_write(int conn, const char *body)
 	/* meta.tsv carries the ranges and option lists; consumers.tsv carries
 	 * the apply class derived from which binaries read the key. Both are
 	 * optional -- a device without them validates by type alone and reports
-	 * every write as untraced, which is the honest degraded answer. */
-	if (read_file(META_PATH_OVR, meta, sizeof(meta)) <= 0 &&
-	    read_file(META_PATH, meta, sizeof(meta)) <= 0)
-		meta[0] = 0;
-	if (read_file(CONS_PATH_OVR, cons, sizeof(cons)) <= 0 &&
-	    read_file(CONS_PATH, cons, sizeof(cons)) <= 0)
-		cons[0] = 0;
+	 * every write as untraced, which is the honest degraded answer. Both
+	 * live in filebuf (buffers.h). */
+	if (read_file(META_PATH_OVR, META_BUF, META_CAP) <= 0 &&
+	    read_file(META_PATH, META_BUF, META_CAP) <= 0)
+		META_BUF[0] = 0;
 	/* settings.tsv, when the image has one, is the authority on what a
 	 * write costs HERE: consumers.tsv was derived from the stock firmware,
-	 * whose readers this image does not run. */
+	 * whose readers this image does not run. So consumers.tsv is only read
+	 * without it. */
 	if (read_file(SETT_PATH_OVR, sett, sizeof(sett)) <= 0 &&
 	    read_file(SETT_PATH, sett, sizeof(sett)) <= 0)
 		sett[0] = 0;
+	CONS_BUF[0] = 0;
+	if (!sett[0] &&
+	    read_file(CONS_PATH_OVR, CONS_BUF, CONS_CAP) <= 0 &&
+	    read_file(CONS_PATH, CONS_BUF, CONS_CAP) <= 0)
+		CONS_BUF[0] = 0;
 
 	/* Identity keys need saying so explicitly. Losing GPON_SN or MAC_KEY
 	 * means the OLT stops authenticating the ONU, which is not something to
@@ -363,12 +382,14 @@ static void handle_write(int conn, const char *body)
 		 * an empty value removes the key. Stock keys live in the vendor
 		 * XML, where an empty value is not a clear. The one exception
 		 * is fwdop (RTK_DEVINFO_SPECVER): empty is its off state, on
-		 * both firmwares, and is what the stock page stores to reset. */
+		 * both firmwares, and is what the stock page stores to reset.
+		 * The LOID and PLOAM password keys (empty_ok_key) are stock
+		 * keys whose empty value is their stock default. */
 		else if (!value[0] && !seq(type, "hostport") && !seq(type, "ascii14") &&
 			 !seq(type, "fixedme") && !seq(type, "fwdop") &&
-			 !seq(type, "routes"))
-			err = "cannot be cleared: flash set refuses an empty value";
-		else if (!type_ok(type, value))
+			 !seq(type, "routes") && !empty_ok_key(name))
+			err = "cannot be cleared: this key needs a value";
+		else if (!(empty_ok_key(name) && !value[0]) && !type_ok(type, value))
 			err = "not valid for its type";
 		else if ((err = lan_pair_refusal(name, value, body)))
 			;
@@ -391,7 +412,8 @@ static void handle_write(int conn, const char *body)
 			goto next;
 		}
 
-		if (write_key(addr, value, got, sizeof(got))) {
+		wrote = write_key(addr, value, got, sizeof(got));
+		if (wrote > 0) {
 			put_fd(conn, "\"ok\":true,\"value\":\"");
 			put_json_cstr(conn, got);
 			put_fd(conn, "\"}");
@@ -447,7 +469,7 @@ static void handle_write(int conn, const char *body)
 					else if (seq(derived, "reboot"))
 						any_reboot = 1;
 				} else {
-					if (tsv_field(cons, name, 1, derived, sizeof(derived)) &&
+					if (tsv_field(CONS_BUF, name, 1, derived, sizeof(derived)) &&
 					    derived[0] && !seq(derived, "unknown"))
 						a = derived;
 
@@ -461,6 +483,12 @@ static void handle_write(int conn, const char *body)
 						any_untraced = 1;
 				}
 			}
+		} else if (wrote < 0) {
+			/* flash failed or printed no KEY=value line: there is
+			 * no read-back to quote, and got holds why instead. */
+			put_fd(conn, "\"ok\":false,\"error\":\"");
+			put_json_cstr(conn, got);
+			put_fd(conn, "\"}");
 		} else {
 			/* The write reported success and the value did not
 			 * change. This is why every write is read back. */
@@ -650,6 +678,15 @@ static const char *sshkey_refusal(const char *key, const char *existing)
  * Write failed with "is it an image tarball?" a click later. This proves the
  * format, not the contents: fwu.sh checks those before it erases anything.
  */
+/*
+ * The md5 of the image the last upload left in UPLOAD_PATH, as /api/upload
+ * answered it, or "" when there is none this daemon vouches for: cleared when
+ * an upload starts, set only when one completes. A write names the md5 it
+ * means, so a tab cannot flash what another tab, or an scp, put in the file
+ * after it uploaded. One file, one md5: a second upload replaces both.
+ */
+static char upload_md5[33];
+
 static int upload_is_tar(void)
 {
 	char head[520];
@@ -991,6 +1028,25 @@ static long load_defaults(void)
 }
 
 /*
+ * A record of key=value lines as a JSON object, or null when the file is not
+ * there: the safe-mode flag and record, and the record of a recreated config
+ * store. An empty file is an empty object, which is still a record.
+ */
+static void emit_record(int conn, const char *file, char *buf, unsigned long cap)
+{
+	long got = read_file(file, buf, cap);
+
+	if (got < 0) {
+		put_fd(conn, "null");
+		return;
+	}
+	put_fd(conn, "{");
+	if (got > 0)
+		put_kv_members(conn, buf);
+	put_fd(conn, "}");
+}
+
+/*
  * GET /api/hostlink without its response head: /api/init carries it too.
  */
 static void emit_hostlink_body(int conn)
@@ -1011,25 +1067,11 @@ static void emit_hostlink_body(int conn)
 	if (got > 0)
 		put_kv_members(conn, buf);
 	put_fd(conn, "}},\"safemode_now\":");
-	got = read_file(SAFEMODE_FLAG, buf, sizeof(buf));
-	if (got >= 0) {
-		put_fd(conn, "{");
-		if (got > 0)
-			put_kv_members(conn, buf);
-		put_fd(conn, "}");
-	} else {
-		put_fd(conn, "null");
-	}
+	emit_record(conn, SAFEMODE_FLAG, buf, sizeof(buf));
 	put_fd(conn, ",\"safemode\":");
-	got = read_file(HOSTLINK_SAFEMODE, buf, sizeof(buf));
-	if (got >= 0) {
-		put_fd(conn, "{");
-		if (got > 0)
-			put_kv_members(conn, buf);
-		put_fd(conn, "}");
-	} else {
-		put_fd(conn, "null");
-	}
+	emit_record(conn, HOSTLINK_SAFEMODE, buf, sizeof(buf));
+	put_fd(conn, ",\"reseed\":");
+	emit_record(conn, RESEED_RECORD, buf, sizeof(buf));
 	put_fd(conn, ",\"link\":\"");
 	got = read_file(HOSTLINK_LINK, buf, sizeof(buf));
 	if (got > 0 && (buf[0] == '0' || buf[0] == '1'))
@@ -1208,6 +1250,8 @@ void serve(int conn)
 		 * with O_EXCL (which does not follow a link) makes the name this
 		 * daemon's own or the open fails.
 		 */
+		upload_md5[0] = 0;
+		syscall3(__NR_unlink, (long)SSH_IMG_PATH, 0, 0);
 		syscall3(__NR_unlink, (long)UPLOAD_PATH, 0, 0);
 		fd = syscall3(__NR_open, (long)UPLOAD_PATH,
 			      O_WRONLY | O_CREAT | O_EXCL, 0600);
@@ -1284,6 +1328,16 @@ void serve(int conn)
 				while (out[i] && out[i] != ' ' && out[i] != '\n')
 					i++;
 				put_json_str(conn, out, i);
+				/* Only a whole md5 binds a write: a hash that
+				 * could not be taken leaves nothing to match,
+				 * and Write then asks for the upload again. */
+				if (i == 32) {
+					unsigned long k;
+
+					for (k = 0; k < 32; k++)
+						upload_md5[k] = out[k];
+					upload_md5[32] = 0;
+				}
 			}
 			put_fd(conn, "\"}");
 		}
@@ -1686,7 +1740,8 @@ void serve(int conn)
 			 * which rejects it, but an argument this daemon has not
 			 * checked is one it is trusting the next program to. */
 			if ((seq(action, "try") || seq(action, "commit") ||
-			     seq(action, "write") || seq(action, "swap")) &&
+			     seq(action, "write") || seq(action, "swap") ||
+			     seq(action, "cancel")) &&
 			    !(seq(part, "0") || seq(part, "1"))) {
 				respond(conn, "400 Bad Request", "application/json", 0);
 				put_fd(conn, "{\"error\":\"partition must be 0 or 1\"}");
@@ -1694,6 +1749,16 @@ void serve(int conn)
 			}
 
 			if (seq(action, "try")) {
+				/* A write that has not reached the erase yet
+				 * (sizes and md5s come first) still leaves the
+				 * old kernel in place, and that is what a trial
+				 * armed now would boot. */
+				if (fwu_running()) {
+					respond(conn, "409 Conflict", "application/json", 0);
+					put_fd(conn, "{\"ok\":false,\"error\":\"a firmware write is running; "
+						     "try the partition once it has finished\"}");
+					return;
+				}
 				respond(conn, "200 OK", "application/json", 0);
 				/*
 				 * Arm a slot only if its kernel is one U-Boot
@@ -1712,6 +1777,29 @@ void serve(int conn)
 				}
 				put_fd(conn, nv_set("sw_tryactive", part)
 					? "{\"ok\":true,\"note\":\"armed\"}"
+					: "{\"ok\":false,\"error\":\"nv setenv failed\"}");
+				return;
+			}
+			/*
+			 * Cancel a trial armed with try and not yet booted:
+			 * sw_tryactive back to 2, U-Boot's "no trial pending".
+			 * Without it an armed trial ran at the next reset of
+			 * any kind, a power cut or the watchdog included, and
+			 * the page could only say it was pending.
+			 */
+			if (seq(action, "cancel")) {
+				char pend[8];
+
+				if (!nv_get("sw_tryactive", pend, sizeof(pend)) || !seq(pend, part)) {
+					respond(conn, "409 Conflict", "application/json", 0);
+					put_fd(conn, "{\"ok\":false,\"error\":\"no trial of partition ");
+					put_json_cstr(conn, part);
+					put_fd(conn, " is pending; nothing was changed\"}");
+					return;
+				}
+				respond(conn, "200 OK", "application/json", 0);
+				put_fd(conn, nv_set("sw_tryactive", "2")
+					? "{\"ok\":true,\"note\":\"cancelled\"}"
 					: "{\"ok\":false,\"error\":\"nv setenv failed\"}");
 				return;
 			}
@@ -1799,6 +1887,17 @@ void serve(int conn)
 				argv[2] = UPLOAD_PATH;
 				argv[3] = 0;
 
+				/* A running job reopens its archive after the
+				 * erase, so a second write must not get as far
+				 * as hashing or replacing anything. The starter
+				 * would refuse too, but only after that. */
+				if (fwu_running()) {
+					respond(conn, "409 Conflict", "application/json", 0);
+					put_fd(conn, "{\"ok\":false,\"error\":\"a firmware write is running; "
+						     "wait for it to finish\"}");
+					return;
+				}
+
 				/* Refuse to write the partition that is
 				 * running. fwu.sh would too, but finding that
 				 * out after the erase has started is not the
@@ -1806,10 +1905,74 @@ void serve(int conn)
 				{
 					char act[8];
 
-					if (nv_get("sw_active", act, sizeof(act)) &&
-					    seq(act, part)) {
+					/* Unknown is not "the other one", as for
+					 * commit: without a confirmed sw_active this
+					 * route does not decide what may be erased. */
+					if (!nv_get("sw_active", act, sizeof(act)) ||
+					    !(seq(act, "0") || seq(act, "1"))) {
+						respond(conn, "409 Conflict", "application/json", 0);
+						put_fd(conn, "{\"ok\":false,\"error\":\"cannot tell which partition this stick is running (sw_active unreadable); nothing was written\"}");
+						return;
+					}
+					if (seq(act, part)) {
 						respond(conn, "400 Bad Request", "application/json", 0);
 						put_fd(conn, "{\"ok\":false,\"error\":\"that is the partition this stick is running\"}");
+						return;
+					}
+				}
+
+				/* The image this write means, by the md5 its
+				 * upload answered. Only this daemon creates
+				 * UPLOAD_PATH, so a second tab's upload is the
+				 * one way the file changes under the page, and
+				 * the md5s inside the tar cannot tell: they only
+				 * prove it is whole. The file is hashed again
+				 * here, right before the starter gets it. */
+				{
+					static char *const margv[] = { "md5sum", UPLOAD_PATH, 0 };
+					char want[40], now[128];
+					long n;
+
+					form_get(body, "md5", want, sizeof(want));
+					if (!upload_md5[0] || !seq(want, upload_md5)) {
+						respond(conn, "409 Conflict", "application/json", 0);
+						put_fd(conn, upload_md5[0]
+							? "{\"ok\":false,\"error\":\"the uploaded image has changed since this page uploaded it; upload it again\"}"
+							: "{\"ok\":false,\"error\":\"no upload this daemon received is waiting to be written; upload the image again\"}");
+						return;
+					}
+					n = run_to_buf(MD5SUM_PATH, margv, now, sizeof(now), MD5SUM_TIMEOUT_MS);
+					if (n < 32 || (now[32] != ' ' && now[32] != '\n')) {
+						respond(conn, "409 Conflict", "application/json", 0);
+						put_fd(conn, "{\"ok\":false,\"error\":\"the uploaded image could not be hashed again; upload it again\"}");
+						return;
+					}
+					now[32] = 0;
+					if (!seq(now, upload_md5)) {
+						upload_md5[0] = 0;
+						syscall3(__NR_unlink, (long)UPLOAD_PATH, 0, 0);
+						respond(conn, "409 Conflict", "application/json", 0);
+						put_fd(conn, "{\"ok\":false,\"error\":\"the file on the stick is no longer the image this page uploaded; upload it again\"}");
+						return;
+					}
+				}
+
+				/* A trial armed on this partition would boot the
+				 * write at its first reset, half written if the
+				 * write is cut short. A value that cannot be read,
+				 * or is none of 0, 1 and 2, is not "no trial". */
+				{
+					char pend[8];
+
+					if (!nv_get("sw_tryactive", pend, sizeof(pend)) ||
+					    !(seq(pend, "0") || seq(pend, "1") || seq(pend, "2"))) {
+						respond(conn, "409 Conflict", "application/json", 0);
+						put_fd(conn, "{\"ok\":false,\"error\":\"cannot tell whether a trial is pending (sw_tryactive unreadable); nothing was written\"}");
+						return;
+					}
+					if (seq(pend, part)) {
+						respond(conn, "409 Conflict", "application/json", 0);
+						put_fd(conn, "{\"ok\":false,\"error\":\"a trial of this partition is pending; cancel it before writing\"}");
 						return;
 					}
 				}
@@ -1989,11 +2152,12 @@ void serve(int conn)
 
 	/*
 	 * The host-port auto-negotiation. GET reads the state the image keeps
-	 * (confd.h, HOSTLINK_*, SAFEMODE_FLAG): no fork, so the page can poll
-	 * it through a trial. POST runs host-autoneg.sh with try, confirm or
-	 * revert, or safe-mode.sh with ack; the scripts own the trial, the
-	 * revert timer, the stored key and the safe-mode record, and the page
-	 * only relays what they said. try answers before the link changes
+	 * (confd.h, HOSTLINK_*, SAFEMODE_FLAG, RESEED_RECORD): no fork, so the
+	 * page can poll it through a trial. POST runs host-autoneg.sh with try,
+	 * confirm or revert, safe-mode.sh with ack, or config-reseed.sh with
+	 * ack (reseed-ack); the scripts own the trial, the revert timer, the
+	 * stored key and the two records, and the page only relays what they
+	 * said. try answers before the link changes
 	 * (the script applies the mode a second later), so this answer always
 	 * leaves.
 	 *
@@ -2048,9 +2212,14 @@ void serve(int conn)
 				script = SAFEMODE_SCRIPT;
 				argv[0] = "safe-mode.sh";
 				argv[1] = action;
+			} else if (seq(action, "reseed-ack")) {
+				/* The record of a recreated config store belongs to config-reseed.sh. */
+				script = RESEED_SCRIPT;
+				argv[0] = "config-reseed.sh";
+				argv[1] = "ack";
 			} else {
 				respond(conn, "400 Bad Request", "application/json", 0);
-				put_fd(conn, "{\"ok\":false,\"error\":\"action must be try (mode on or off), confirm, revert, ack, serdes-try (mode fiber1g, 2500basex or hisgmii), serdes-confirm, serdes-revert or serdes-status\"}");
+				put_fd(conn, "{\"ok\":false,\"error\":\"action must be try (mode on or off), confirm, revert, ack, reseed-ack, serdes-try (mode fiber1g, 2500basex or hisgmii), serdes-confirm, serdes-revert or serdes-status\"}");
 				return;
 			}
 			if (!file_exists(script)) {
@@ -2525,6 +2694,13 @@ void serve(int conn)
 	if (seq(path, "/api/status")) {
 		respond(conn, "200 OK", "application/json", 0);
 		emit_status_json(conn);
+		return;
+	}
+
+	/* The PON load figure alone, between status polls; see status.c. */
+	if (seq(path, "/api/ponload")) {
+		respond(conn, "200 OK", "application/json", 0);
+		emit_ponload_json(conn);
 		return;
 	}
 

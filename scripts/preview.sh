@@ -211,7 +211,7 @@ NV
     printf "0.08 0.12 0.09 1/43 812\n" > $Q/proc/loadavg
     echo NIJIKA-Luna > $Q/proc/sys/kernel/hostname
     printf "system type\t\t: Realtek RTL9602C (ODI DFP-34X-2C2)\nmachine\t\t\t: Unknown\nprocessor\t\t: 0\ncpu model\t\t: RLX5281 V0.2\nBogoMIPS\t\t: 297.98\n" > $Q/proc/cpuinfo
-    printf "state 5 (O5)\no7_hold keep 0 held 0\nonu_id 13\n" > $Q/proc/odi_gpon/status
+    printf "state 5 (O5)\nin_state_s 11520\no7_hold keep 0 held 0\nonu_id 13\n" > $Q/proc/odi_gpon/status
     printf "ctr_samples 11\nctr_ds_superframe 305491896\nctr_fec_now ds 1\nctr ds_gem_idle 4843967295\n" > $Q/proc/odi_gpon/counters
     # The counters behind the shared PON section. The file stands still, so
     # the section shows "measuring".

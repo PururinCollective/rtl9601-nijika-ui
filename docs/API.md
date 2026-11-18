@@ -226,6 +226,10 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           `ranging` (/proc/odi_gpon/status "ranging_time ",
                                           odi-oss: "eqd_bits N protection_path N ..." from
                                           the last Ranging_Time, or "none"),
+                                          `in_state_s` (/proc/odi_gpon/status "in_state_s ",
+                                          odi-oss: whole seconds in the current ONU state on
+                                          the monotonic clock; in O5, how long the line has
+                                          been up),
                                           `host_link` (odi_switch host_link, "0" or "1") and
                                           `host_mode` (/var/run/host-serdes "running=").
                                           `uptime`: the whole seconds of /proc/uptime
@@ -246,6 +250,21 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           there when a sample ever read the idle register
                                           full), each absent when its line is. A driver
                                           without ctr_ds_superframe sends none of them
+    GET  /api/ponload                    {"ok":true} with the shared PON members of
+                                          /api/status (`ds_superframe`, `ds_gem_idle`,
+                                          `ds_fec`, `ds_gem_idle_sat`, same rules) and
+                                          `onu_state` (/proc/odi_gpon/status "state ",
+                                          e.g. "5 (O5)"). File reads only, no diag, so the
+                                          page asks every second while Status is shown;
+                                          the driver samples once a second. Also
+                                          `pon_in_octets` and `pon_out_octets`, the PON
+                                          port (2) ifInOctets and ifOutOctets as decimal
+                                          strings of the 64-bit counters, read with
+                                          ioctl MIB_GET on /dev/odi_sw (no diag, no fork),
+                                          for the rates on the fibre line; neither when
+                                          the device is missing or a read fails. Each
+                                          group is absent without its source; only
+                                          {"ok":true} with neither.
     GET  /api/ntp                        {"now": the stick's clock, epoch seconds,
                                           "ntp": null, or {"event","time","offset",
                                           "stratum","last_sync"} from /tmp/ntp-status
@@ -278,7 +297,15 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           1 byte to 6 MiB, and it must start like a
                                           tar archive (`ustar` at offset 257), else
                                           400 and nothing is kept
-    POST /api/firmware   action=write&partition=N
+    POST /api/firmware   action=write&partition=N&md5=<md5 the upload answered>
+                                          409 when md5 is not that of the last upload
+                                          this confd received (another upload since,
+                                          the file changed by hand, a confd restart),
+                                          when a write is running, when sw_active or
+                                          sw_tryactive cannot be read, or when a trial of
+                                          partition N is pending. The upload lives in
+                                          /tmp/img.upload.tar; an upload removes
+                                          /tmp/img.tar, the ssh path
     GET  /api/firmware                    partitions, versions, build manifest,
                                           `defaultauth`, `switches`, write progress;
                                           `env` (the sw_* of `nv getenv`),
@@ -295,8 +322,11 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           address); `dev_breadcrumbs`, true only
                                           while `/etc/config/breadcrumbs.on` exists.
                                           Plain file reads; the UI never writes them
-    POST /api/firmware   action=try|commit|reboot&partition=N
-                                          reboot answers 409 while a write is running
+    POST /api/firmware   action=try|commit|cancel|reboot&partition=N
+                                          reboot and try answer 409 while a write is
+                                          running; cancel sets sw_tryactive to 2 and
+                                          answers 409 unless a trial of partition N is
+                                          pending
                                           a refused commit answers
                                           {"ok":false,"error":"commit N: <nv reason>"},
                                           e.g. while confirm-arp exists; there is no
@@ -327,14 +357,18 @@ Refused regardless of schema: `LAN_SDS_MODE`, `LAN_SPEED_MODE`, `FIBER_MODE`.
                                           trial (`serdes`: `supported` and `state`, from
                                           `/var/run/host-serdes`), the safe-mode
                                           flag for this boot and the record of an
-                                          unacknowledged one, the host link;
+                                          unacknowledged one, `reseed` (the record of
+                                          a config store recreated at boot,
+                                          `/etc/config/config-reseeded`: `files`,
+                                          `build`, `uptime`, or null), the host link;
                                           `supported` is false on an image without it
     POST /api/hostlink  action=try&mode=on|off
-                        action=confirm | revert | ack
+                        action=confirm | revert | ack | reseed-ack
                         action=serdes-try&mode=fiber1g|2500basex|hisgmii
                         action=serdes-confirm | serdes-revert | serdes-status
                                           fixed verbs: try, confirm and revert run
                                           `host-autoneg.sh`, ack runs `safe-mode.sh ack`,
+                                          reseed-ack runs `config-reseed.sh ack`,
                                           the serdes-* ones run `host-serdes.sh try MODE`,
                                           `confirm`, `revert` and `status` (the mode is
                                           checked against the three names, nothing else

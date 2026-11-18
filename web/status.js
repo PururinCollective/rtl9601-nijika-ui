@@ -60,6 +60,23 @@ const tight = (spec) => (spec.winHi - spec.winLo) * TIGHT_SHARE;
 /* A real minus sign, not a hyphen: the readout face draws the two differently. */
 const signed = (v, d) => (v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
 
+/* Two dimension lines side by side: one too short for its whole label keeps
+   the figure and drops the edge name, or the two labels run into each other
+   ("1.6 dB to min 2.9 dB to maximum"). It needs the drawn widths, so it runs
+   again whenever the meter changes size: a window resize, or the Status tab
+   shown again after the meter was drawn while it was hidden (width 0). */
+function fitDims(host) {
+  const dims = host.querySelector('.m-dims');
+  if (!dims || dims.children.length < 2) return;
+  for (const d of dims.children) {
+    d.classList.remove('short');
+    d.classList.toggle('short', d.children[0].offsetWidth > d.offsetWidth);
+  }
+}
+const fitObserver = typeof ResizeObserver === 'function'
+  ? new ResizeObserver((entries) => { for (const e of entries) fitDims(e.target); })
+  : null;
+
 function meter(hostSel, spec, value) {
   const host = $(hostSel);
   const unit = spec.unit || 'dBm';
@@ -152,6 +169,8 @@ function meter(hostSel, spec, value) {
     + signed(spec.winLo, 1) + ' to ' + signed(spec.winHi, 1) + ' ' + unit + '.');
   inst.append(scale, lab, dims);
   host.append(inst);
+  fitDims(host);
+  if (fitObserver && !host.dataset.fit) { host.dataset.fit = '1'; fitObserver.observe(host); }
   const foot = el('p', 'm-note');
   foot.textContent = spec.foot || `${spec.note}, ${signed(spec.winLo, 1)} to ${signed(spec.winHi, 1)} ${unit}`;
   host.append(foot);
@@ -294,6 +313,27 @@ function ladder(state) {
     : (STATES[state] || state) + ': not yet operational.';
 }
 /*
+ * How long the line has been in its state, from /api/status in_state_s
+ * (odi-oss: whole seconds since the last ONU state change, on the monotonic
+ * clock). In O5 that is the time since the line last came up, apart from
+ * the stick uptime: a pulled fibre restarts it. Outside O5 it is the time in
+ * that one state, not since the line went down, so it is named by state.
+ * Hidden without the member (an older image or the stock firmware).
+ */
+function lineUp(state, sec) {
+  const host = $('#lineup');
+  host.textContent = '';
+  const t = state ? upFor(sec) : null;
+  host.hidden = t === null;
+  if (t === null) return;
+  const dt = el('dt', null, state === 'O5' ? 'Line up' : 'In ' + state);
+  dt.title = state === 'O5'
+    ? 'Since the ONU last reached O5. Any drop, a pulled fibre included, starts it over; a reboot of the stick does too.'
+    : 'Time in this state alone, not since the line went down.';
+  host.append(dt, el('dd', 'num', t));
+}
+
+/*
  * The SoC temperature, from /api/status chip_temp (the kernel hwmon sensor,
  * read by confd; absent on an image without it). Only the alarms the kernel
  * raised decide anything: this page holds no limit of its own, and the limits
@@ -361,11 +401,19 @@ function chipBar(chip) {
  * idle count went backwards (a reboot), the driver read the idle register
  * full meanwhile, the frame count moved more than the time between the
  * polls allows (the line re-locked), or the result is outside 0 to 100 %.
+ *
+ * The page asks /api/ponload every second besides the status poll, and the
+ * driver samples once a second too, so two reads can land on the same
+ * sample: no frames between them. That read keeps the earlier one as the
+ * start and gives the last figure again. For the same reason a window can
+ * hold one sample more than the clock between the reads, which the re-lock
+ * bound allows for.
  */
 const PON_FRAME = 38880;        /* bytes in 125 us at 2.488 Gbit/s */
 const PON_FEC_PARITY = 153 * 16;
 const GEM_IDLE = 5;
 let PREV_PON = null;
+let LAST_PON = null;
 function ponLoad(st) {
   const sf = Number(st && st.ds_superframe);
   const fec = st && typeof st.ds_fec === 'string' ? st.ds_fec.trim() : '';
@@ -375,19 +423,24 @@ function ponLoad(st) {
   if (!st || typeof st.ds_superframe !== 'string' || !Number.isFinite(sf) || !Number.isFinite(sat)
       || idle === null) {
     PREV_PON = null;
+    LAST_PON = null;
     return null;
   }
   const now = Date.now();
   const prev = PREV_PON;
+  /* The same driver sample as the last read: nothing new to work out. */
+  if (prev && sf === prev.sf && idle === prev.idle && fec === prev.fec && sat === prev.sat) return LAST_PON;
   PREV_PON = { at: now, sf, idle, fec, sat };
+  LAST_PON = null;
   if (!prev || idle < prev.idle || fec !== prev.fec || sat !== prev.sat) return null;
   const frames = (sf - prev.sf + 0x40000000) % 0x40000000;
-  if (frames <= 0 || frames > (now - prev.at) * 8 * 1.1 + 16) return null;
+  if (frames <= 0 || frames > (now - prev.at + 1000) * 8 * 1.1 + 16) return null;
   const payload = PON_FRAME - (fec === '1' ? PON_FEC_PARITY : 0);
   const used = payload - Number(idle - prev.idle) * GEM_IDLE / frames;
   const pct = 100 * used / payload;
   if (pct < 0 || pct > 100) return null;
-  return { pct, mbps: used * 8 * 8000 / 1e6, of: payload * 8 * 8000 / 1e6 };
+  LAST_PON = { pct, mbps: used * 8 * 8000 / 1e6, of: payload * 8 * 8000 / 1e6 };
+  return LAST_PON;
 }
 
 const ponPct = (v) => (v < 10 ? v.toFixed(1) : v.toFixed(0));
@@ -452,6 +505,7 @@ function renderStatus(raw, chip, st) {
 
   const state = num(s['gpon get onu-state'], /Operation State\((O\d)\)/);
   ladder(state);
+  lineUp(state, st && st.in_state_s);
 
   const alarms = (s['gpon get alarm-status'] || '').split('\n').filter((l) => /Alarm /.test(l));
   const asserted = alarms.filter((l) => !/clear/i.test(l));
@@ -552,6 +606,13 @@ function renderLinkCheck(r) {
   const box = $('#linkcheck');
   if (!box) return;
   box.hidden = !r;
+  /* The finding says the same as the note under the ladder, and more exactly
+     (O5 is not yet "carrying traffic" while the traffic stage still measures):
+     show one of the two. */
+  $('#statenote').hidden = !!r;
+  /* A failing stage is when someone asks for help: point at the bundle there. */
+  const help = $('#lc-help');
+  if (help) help.hidden = !r || r.finding.cls !== 'bad';
   if (!r) return;
   const ol = $('#lc-stages');
   ol.textContent = '';
@@ -566,4 +627,4 @@ function renderLinkCheck(r) {
   p.textContent = r.finding.text;
 }
 
-export { renderStatus, renderLinkCheck, sections, upFor, lineFacts, ponLoad, pathLoss, eqd, OPTICS, STATES, tight };
+export { renderStatus, renderLinkCheck, renderPon, sections, upFor, lineFacts, ponLoad, pathLoss, eqd, OPTICS, STATES, tight };

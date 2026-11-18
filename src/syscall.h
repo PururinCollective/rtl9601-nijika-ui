@@ -35,6 +35,7 @@
 #define __NR_rename 4038
 #define __NR_fsync  4118
 #define __NR_close 4006
+#define __NR_ioctl 4054
 
 #define __NR_fork       4002
 #define __NR_waitpid    4007
@@ -530,8 +531,13 @@ static int reap_bounded(long pid, long ms, long *status)
 
 		if (r == pid)
 			return 1;
-		if (r < 0)
-			return 1;	/* already reaped, or not ours: nothing to wait for */
+		if (r < 0) {
+			/* Already reaped, or not ours: nothing to wait for, and
+			 * no status either. Say "killed" rather than leave the
+			 * caller's zero, which reads as a clean exit 0. */
+			*status = 0x7f;
+			return 1;
+		}
 		if (waited >= ms)
 			break;
 		ts[0] = 0;

@@ -328,7 +328,12 @@ function renderValue(row, raw, readonly = false) {
      beside the field it is stored in. */
   if (row.type === 'hexascii' || row.type === 'hex20') {
     const txt = hexAscii(raw);
-    box.append(el('div', 's-aside', txt === null ? 'Not printable ASCII' : 'Reads as “' + txt + '”'));
+    /* A PLOAM password shorter than 10 octets is padded with zero bytes, as in
+       44454641554c54000000: read the text before the padding. */
+    const unpadded = txt === null && raw ? String(raw).replace(/(00)+$/, '') : '';
+    const padTxt = unpadded && unpadded.length < String(raw).length ? hexAscii(unpadded) : null;
+    box.append(el('div', 's-aside', txt !== null ? 'Reads as “' + txt + '”'
+      : padTxt !== null ? 'Reads as “' + padTxt + '”, padded with zero bytes' : 'Not printable ASCII'));
   }
 
   /* The clock line is filled in from /api/ntp once the row is on the page. */
@@ -455,8 +460,9 @@ function renderRow(row, readonly) {
     tags.append(badge);
   };
   if (imageAware()) {
-    /* The apply class this image gives the key: what saving it costs. */
-    if (set) addCostIcon(set.apply);
+    /* The apply class this image gives the key: what saving it costs.
+    None on a key written with its pair: it is not edited here, so it has no save of its own to cost. */
+    if (set && !set.pair) addCostIcon(set.apply);
   } else {
     const ap = applyOf(row);
     if (ap === 'restart:omci') addCostIcon('internet', 'Restarts OMCI');
@@ -465,7 +471,7 @@ function renderRow(row, readonly) {
   if (row.writable === 'never') tags.append(el('span', 'tag', 'Never written'));
   if (row.writable === 'identity' && !readonly) {
     const t = el('span', 'tag identity', 'Identity');
-    t.title = 'The line authenticates on this key. Saving it asks you to confirm.';
+    t.title = 'The OLT recognises this ONU by this key. Saving a change asks you to confirm first.';
     tags.append(t);
   }
   if (isNotReportedToOlt) {
@@ -475,7 +481,8 @@ function renderRow(row, readonly) {
   }
   if (prov && !unmet) {
     const t = el('span', 'tag ' + prov.cls, prov.label === 'image default' ? 'Default' : 'Changed');
-    if (prov.was !== undefined) t.title = `${prov.from}: ${prov.was === '' ? '(empty)' : prov.was}`;
+    t.title = prov.was === undefined ? 'Unchanged: the value this image ships with.'
+      : `${prov.from}: ${prov.was === '' ? '(empty)' : prov.was}`;
     tags.append(t);
   }
   /* The OMCI_FIXED_ME editor is a table, not one field:
@@ -515,6 +522,7 @@ function renderLegend() {
   const host = $('#legend');
   host.textContent = '';
   if (!imageAware()) return;
+  host.append(el('span', 'legend-lead', 'If changed:'));
   for (const c of ['live', 'restart', 'internet', 'reboot']) {
     const s = el('span', 'legend-item');
     s.append(costBadge(c), document.createTextNode(CLASS_MEANS[c]));

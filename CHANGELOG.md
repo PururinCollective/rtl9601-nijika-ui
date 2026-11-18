@@ -163,6 +163,121 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - README: a Nijika UI part ahead of odi-ui's own README: what the page offers, the classic
   NIJIKA pages beside it, screenshots in `docs/screenshot-nijika/` (the serial number and the
   MAC addresses are placeholders), where the Nijika files are and the credits.
+
+## v1.18.1 (2026-11-18)
+
+- Config: a PLOAM password shorter than 10 characters, stored with zero
+  bytes after it the way the setup wizard writes it, reads as its text
+  under the field ("Reads as “DEFAULT”, padded with zero bytes") instead
+  of "Not printable ASCII".
+
+- confd: a save reads meta.tsv and consumers.tsv into the buffer static
+  files are served from, instead of two arrays of their own, and reads
+  consumers.tsv only when the image has no settings.tsv. The daemon has
+  48 KB less BSS.
+
+## v1.18.0 (2026-11-17)
+
+- Firmware: a write flashes the image this page uploaded and nothing else.
+  The write names the md5 the upload answered, and confd refuses it when
+  the file has changed since (a second tab, a change by hand, a restart).
+  The upload now has a name of its own, `/tmp/img.upload.tar`, so an image
+  copied to `/tmp/img.tar` over ssh never changes it. A second Write and a
+  Try wait until a running write has finished, a partition with a pending
+  trial is not written, an unreadable or failed `sw_active` or
+  `sw_tryactive` read refuses the write, and a pending trial can be cancelled from its card.
+  With the fallback U-Boot copy naming another slot the trial banner offers
+  Commit, which makes both copies agree; before, the page had no way out and
+  every write was refused. confd gives `fwu_starter.sh` 20 s instead of 5 s
+  of silence: killing it while it waited for its job reported a failure for
+  a write that then ran. `nv setenv` gets 12 s instead of 2 s, so a slow
+  environment write is not cut off in its erase.
+- Logs: the diagnostics bundle text says that the serial number, the MACs
+  and the LOID are masked, as the image script has done all along, rather
+  than that they are kept. A "What to write with it" section lists the five
+  facts the bundle cannot tell, ready to copy into a report.
+- Status: when the link check finds a failing stage, a line under the
+  finding links the diagnostics bundle and the Logs page.
+- Status: under Registration a "Line up" row says how long the line has
+  been in O5, apart from the uptime of the stick, so a pulled fibre or any
+  other drop starts it over. Outside O5 the row gives the time in the
+  current state. It reads `in_state_s` from /proc/odi_gpon/status, one line
+  of a file `/api/status` already reads, so it costs no fork; on an image
+  without the line the row stays hidden.
+
+## v1.17.1 (2026-11-17)
+
+- Config: the tags beside a setting (Identity, Default, Changed) and its
+  cost bars are small labels again rather than field-height boxes, so they
+  no longer read as buttons. The Identity tag is neutral instead of
+  warning yellow, a Default tag says on hover that the value is the image
+  default, and the legend opens with "If changed:", since the bars give
+  what saving costs and not whether the OLT took the value. The legend
+  says "internet" where it said "the fibre service", so it stays on one
+  line down to a 1366px wide window. A key written with its pair, such as
+  "LOID (in force)", shows no cost bars, since it has no save of its own.
+
+- Config: the help for `MAC_KEY`, `PON_VENDOR_ID` and `GPON_PLOAM_FORMAT`
+  says the stock firmware alone reads them, and that a new UNI MAC address
+  needs no new `MAC_KEY`. Refs AndreZiviani/odi-oss#455.
+- Config: the help for "802.1X EAPOL without the service tag" says it has
+  run on one line that uses EAP, and that the VLAN forward operation
+  override stays empty beside it: the key needs no override and does not
+  set one. Refs AndreZiviani/odi-oss#301.
+- Firmware: the write log under a running flash shows the erase progress as
+  one line that updates, instead of thousands of updates run into one line
+  wider than the box. `flash_eraseall` redraws its progress with a carriage
+  return, which no browser breaks a line on; the page now keeps only the last
+  redraw of each line. `make check` covers it.
+- Status: the down and up rates on the fibre line refresh every second, with
+  the PON figure, instead of every 15 s. `/api/ponload` adds
+  `pon_in_octets` and `pon_out_octets`, the PON port byte counters read from
+  the switch driver with two ioctls on `/dev/odi_sw` (no `diag`, no fork); the
+  page takes the rate between two reads. A counter that went backwards, a gap
+  of more than five seconds or an image without the device gives no
+  one-second figure and the 15 s one stays. While a one-second figure is under
+  three seconds old it is the one shown, so the number does not jump back to
+  the 15 s average. The tick no longer stops for good when one answer lacks the
+  PON counters: either figure is used when present, and after three misses it
+  asks once a minute. `make check` and `make smoke` cover it.
+
+## v1.17.0 (2026-11-16)
+
+- Status: the shared PON figure refreshes every second while the Status
+  view is on screen, instead of with the 15 s status poll. It comes from a
+  new route, `/api/ponload`, which reads the driver's counters and state
+  files and starts no `diag`, so the rest of the page (optics, rates, link
+  check) stays at 15 s. Two reads that land on the same driver sample keep
+  the last figure, and a window may hold one sample more than the clock
+  between the reads. A one-second figure follows bursts more closely than
+  the 15 s average did. `make check` and `make smoke` cover it.
+- Config: LOID, LOID password, their two in-force copies and the PLOAM
+  password can be emptied again, on the page and through `/api/config`.
+  Empty is their default, and the odi-oss `flash` stores it; the stock
+  `flash` still refuses it. GPON_SN stays required (#104).
+- A bar on every view when the odi-oss image recreated the config store at
+  boot (an erased config partition, odi-oss `config-reseed.sh`): "Settings
+  recreated. The config store was missing at boot and was rebuilt from the
+  image defaults (lastgood_hs.xml). The serial number is empty, so the stick
+  stays off the fibre (PON) until you set it or restore a backup." It has
+  buttons to Config > Line and to System > Backup & reset, and Acknowledge removes
+  it. `/api/hostlink` (and `/api/init`) add `reseed`, the record
+  `/etc/config/config-reseeded` read with no fork (`files`, `build`,
+  `uptime`, or null); POST `action=reseed-ack` runs `config-reseed.sh ack`,
+  bounded like the safe-mode ack. An image without the script never shows
+  the bar. Refs AndreZiviani/odi-oss#438.
+- Status: the Receive and Transmit headings are set as Registration's
+  beside them, so the three read as one row. Two dimension lines under a
+  meter that are too short for their labels keep the figures and drop the
+  edge names, instead of running into each other ("1.6 dB to min 2.9 dB to
+  maximum"). While the link check is shown, the note under the ladder is
+  hidden: the check's finding covers it, and in O5 the note said "carrying
+  traffic" before the traffic stage had measured any (#383).
+- API: a write that `flash set` fails answers with the first line flash
+  printed, such as `"error":"flash: no such key: GPON_SN"`; a write that
+  times out, cannot start flash or prints no read-back says that instead.
+  Before, it reported "did not stick" and quoted a buffer that held nothing
+  yet, or in a batch the value of the key before it (#103).
 - Status: a link check under the registration ladder, stage by stage: light,
   registered, OMCI with the OLT, services set up, traffic. Each stage shows
   its evidence, and the first that fails gives one finding: no light; an OLT

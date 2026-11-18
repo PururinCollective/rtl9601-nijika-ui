@@ -8,7 +8,8 @@
 
 import { $, el, fail, get, wireTheme, wireHelp } from './dom.js';
 import { S, EDITS } from './state.js';
-import { renderStatus, renderLinkCheck, sections, lineFacts } from './status.js';
+import { liveFibreRates } from './overview.js';
+import { renderStatus, renderLinkCheck, renderPon, sections, lineFacts } from './status.js';
 import { parsePorts } from './flow.js';
 import { linkCheck, trackLink, omciState } from './linkcheck.js';
 import { parseOmci } from './omci.js';
@@ -396,6 +397,42 @@ async function refresh() {
 }
 
 /*
+ * The shared PON figure and the fibre-line rates, every second between the
+ * status polls. The source is two file reads and two ioctls in confd and no
+ * fork (/api/ponload), so this costs a fraction of what the status poll does,
+ * which stays at 15 s for the optics, the link check and the rest. Only while
+ * the Status view is on screen, one request at a time (confd answers one at a
+ * time). The two figures are independent: an answer with either one is used.
+ * An answer with neither (a stock slot, an older image) or a failed request
+ * counts as a miss; three misses in a row pause the tick for a minute, then
+ * it asks again, so one bad read never stops it for good and a stick without
+ * the members is asked once a minute, not every second. Outside O5 the PON
+ * section shows its dash.
+ */
+const PON_MS = 1000;
+const PON_MISS_MAX = 3;
+const PON_PAUSE_TICKS = 60;
+let PON_BUSY = false;
+let PON_MISS = 0;
+let PON_PAUSE = 0;
+async function ponTick() {
+  if (PON_BUSY || S.REBOOTING || document.hidden || VIEW !== 'status') return;
+  if (PON_PAUSE > 0) { PON_PAUSE--; return; }
+  PON_BUSY = true;
+  let got = false;
+  try {
+    const p = await get('/api/ponload');
+    const m = /\((O\d)\)/.exec(p.onu_state || '');
+    renderPon(p, m ? m[1] : null);
+    got = typeof p.ds_superframe === 'string';
+    if (liveFibreRates(p) !== null || typeof p.pon_in_octets === 'string') got = true;
+  } catch (e) { /* the status poll reports a stick that does not answer */ }
+  finally { PON_BUSY = false; }
+  PON_MISS = got ? 0 : PON_MISS + 1;
+  if (PON_MISS >= PON_MISS_MAX) { PON_MISS = 0; PON_PAUSE = PON_PAUSE_TICKS; }
+}
+
+/*
  * A 401 from the stick means this browser's session ended: signed out in
  * another tab, confd restarted, or the session ran out. Every fetch the page
  * makes goes through here, so whichever one finds out first takes the page to
@@ -458,4 +495,5 @@ let INIT_HOSTLINK = null;
   /* A scrape is three forks of ~35 ms each on a ~300 BogoMIPS core, so this is
      deliberately unhurried. */
   setInterval(refresh, 15000);
+  setInterval(ponTick, PON_MS);
 })();

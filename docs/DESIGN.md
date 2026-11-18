@@ -91,7 +91,9 @@ ARIA tablists: arrow keys move between tabs, Home and End jump to the ends.
     that brings the forced link up), an odi-oss safe-mode boot (the fibre off, the default
     password for that boot only: confd accepts `admin:admin` while `/var/run/safe-mode`
     exists, without reading or touching `confd.auth`) and a past safe-mode boot not yet
-    acknowledged (Acknowledge runs `safe-mode.sh ack`). Under it, the **link mode**
+    acknowledged (Acknowledge runs `safe-mode.sh ack`). A bar of its own says when the
+    config store was recreated from the image defaults at boot (Acknowledge runs
+    `config-reseed.sh ack`). Under it, the **link mode**
     of the same port (odi-only `HOST_SERDES`, `writable=never` too): Fiber 1G (1000BASE-X,
     the default and the most compatible), 2.5G (2500BASE-X, which runs with
     auto-negotiation off) or HiSGMII, a trial of the same kind through `host-serdes.sh`
@@ -182,19 +184,27 @@ never trips the session watcher. The status poll stops meanwhile. A stick still
 answering after 60 s, or silent after 5 minutes, gets a sentence and a *Reload*
 button; after 15 minutes the page stops asking.
 
-The same striped band carries three more states, because in each the image
+The same striped band carries four more states, because in each the image
 changed what runs without being asked, and none may go unseen: an odi-oss
 **safe-mode boot** (the fibre off, the default passwords for this boot only), a
 **safe-mode record** (a safe-mode boot happened and nobody has acknowledged it;
-it stays until someone does), and the **boot fallback** (`HOST_AUTONEG` is off
+it stays until someone does), a **recreated config store** (odi-oss
+`config-reseed.sh` found `lastgood.xml` or `lastgood_hs.xml` missing at boot,
+an erased config partition, and installed the image defaults with the serial
+number and PLOAM password empty, so the PON stays down until they are set; the
+record `/etc/config/config-reseeded` stays until acknowledged), and the **boot fallback** (`HOST_AUTONEG` is off
 but this boot found the forced link down and runs auto-negotiation to stay
 reachable; the setting is kept) and its SerDes twin (*Host mode fallback.*: `HOST_SERDES` is
 2.5G, this boot saw no link in it and runs Fiber 1G; the setting is kept). They come from `/api/hostlink` and stack under the trial bar at the same width. Each is one
-short line that starts with a bold head (*Safe mode.*, *Host link fallback.*, *Host mode fallback.*);
+short line that starts with a bold head (*Safe mode.*, *Settings recreated.*, *Host link fallback.*, *Host mode fallback.*);
 the long explanation is on System > Access, under *Locked out? The safe mode*.
 The safe bars link to *Details* (System > Access) and offer *Acknowledge*
 (`safe-mode.sh ack`); the fallback bar links to the Host port settings and has
-no button: it goes by itself at the next boot that brings the forced link up. The safe-mode record's `cleared=` is a
+no button: it goes by itself at the next boot that brings the forced link up. The
+recreated-store bar names the recreated files, says the serial number is empty when
+`lastgood_hs.xml` (which holds it) is among them, has buttons to Config > Line and to System >
+Backup & reset, and offers *Acknowledge* (`reseed-ack`, which runs `config-reseed.sh ack`);
+an image without the script never writes the record, so never shows the bar. The safe-mode record's `cleared=` is a
 comma-separated list (`HOST_AUTONEG`, `HOST_SERDES`, both, `none` or `failed`) and the bar
 names what was cleared. The text is built by a pure
 function (`bannerText` in `web/hostlink.js`) that `make check` drives with
@@ -301,7 +311,7 @@ in odi-oss is the prose version and the source of truth.
 | class | meaning | action | keys |
 |---|---|---|---|
 | **LIVE** | takes effect at once | `apply.sh network`, run straight after the save; `apply.sh omci` for the four VLAN keys, also run straight after the save (omcid rereads the store on SIGHUP and rebuilds the connections in place, the ONU stays in O5); `none` where the daemon reads the key each time it uses it | `LAN_IP_ADDR`, `LAN_SUBNET`, `LAN_ENABLE_IP2`, `LAN_IP_ADDR2`, `LAN_SUBNET2`; the four `VLAN_*`; `OLT_SW_DOWNLOAD` |
-| **SERVICE RESTART** | a daemon restarts, the fibre service stays up | `apply.sh syslog` / `apply.sh ntp`, run straight after the save (apply.sh kills the daemon, busybox init respawns it, bounded by `APPLY_TIMEOUT_MS`) | `SYSLOG_SERVER`, `NTP_SERVER` |
+| **SERVICE RESTART** | a daemon restarts, internet stays up | `apply.sh syslog` / `apply.sh ntp`, run straight after the save (apply.sh kills the daemon, busybox init respawns it, bounded by `APPLY_TIMEOUT_MS`) | `SYSLOG_SERVER`, `NTP_SERVER` |
 | **INTERRUPTS INTERNET** | applied without a reboot, the fibre service drops meanwhile | `apply.sh omci`, offered as *Apply now* behind a confirmation (omcid deactivates the ONU, clears its MIB and ranges it again, in the same process) | `GPON_SN`, `GPON_PLOAM_PASSWD`, the four `LOID*`, `OMCI_SW_VER1/2`, `GPON_ONU_MODEL`, `OMCC_VER`, `OMCI_VENDOR_PRODUCT_CODE`, `ONU_HW_VERSION`, `OMCI_UNKNOWN_ME_OK`, `OMCI_VEIP`, `OMCI_VEIP_SLOT_ID`, `OMCI_PRIVATE_ME` |
 | **REBOOT** | read only at boot | *Reboot now*, behind a confirmation that names the slot it comes back on | `ELAN_MAC_ADDR` |
 
@@ -686,7 +696,9 @@ would overwrite anything written by hand.
 The Firmware tab used to hand out an `scp` command, on the grounds that a 3 MB
 image could not be held in the memory this device has. That was true of holding
 it; it was never true of moving it. The body is streamed straight to
-`/tmp/img.tar` in 64 KB pieces and is never in memory whole.
+`/tmp/img.upload.tar` in 64 KB pieces and is never in memory whole. That
+name is confd's own; the ssh instructions use `/tmp/img.tar`, which an upload
+removes, so a copy over ssh never changes the bytes a Write hashes.
 
 **Raw bytes, not multipart.** `fetch(url, {body: file})` sends the file as the
 body with no boundary to find, so there is no parser here to get wrong.
@@ -931,9 +943,16 @@ Refused regardless of what the schema says: `LAN_SDS_MODE`, `LAN_SPEED_MODE`,
 are validated server-side against their type, not only in the browser, since a
 request need not come from the page.
 
-Clearing a key is rejected with a message saying why, except the `hostport` keys (`SYSLOG_SERVER`, `NTP_SERVER`), which odi-oss `flash` keeps in its own file and removes on an empty value. For the rest: `flash set` guards its set
-branch with `[ "$3" != "" ]`, so an empty value falls through to its usage text
-and exits 1 while looking like it worked.
+Clearing a key is rejected with a message saying why, except two groups. The
+odi-only keys of types `hostport`, `ascii14`, `fixedme` and `routes`
+(`SYSLOG_SERVER`, `NTP_SERVER`, `ONU_HW_VERSION`, `OMCI_FIXED_ME`,
+`LAN_ROUTES`), which odi-oss `flash` keeps in its own file and removes on an
+empty value; and the stock keys whose empty value is their default or off
+state: `RTK_DEVINFO_SPECVER`, `LOID`, `LOID_PASSWD`, `LOID_OLD`,
+`LOID_PASSWD_OLD` and `GPON_PLOAM_PASSWD`. odi-oss `flash` stores an empty
+value for a stock key. The stock `flash set` guards its set branch with
+`[ "$3" != "" ]`, so there an empty value falls through to its usage text and
+exits 1, and the write is reported as failed.
 
 ## Authentication
 
