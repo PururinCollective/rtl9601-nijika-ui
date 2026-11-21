@@ -113,7 +113,7 @@ function renderAbout(host) {
   art.innerHTML = MASCOT;
   const text = el('div', 'nj-about-text');
   text.append(el('h3', 'nj-about-name', 'NIJIKA Luna'),
-    el('p', null, 'GPON ONU firmware for the HSGQ / ODI GPON SFP stick (RTL9601D), built on ODI OSS.'));
+    el('p', null, 'GPON ONU firmware for the GPON ONU SFP (RTL9601D), built on ODI OSS.'));
   const chips = el('p', 'nj-chips');
   if (image) chips.append(el('span', 'nj-chip', image));
   if (build.built) chips.append(el('span', 'nj-chip', 'Built ' + build.built));
