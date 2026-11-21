@@ -45,6 +45,10 @@ docker run -d --name odi-ui-preview -p 18080:18080 --cap-add SYSLOG -e PREVIEW_T
   "${OMCI_MOUNT[@]}" "${MIB_MOUNT[@]}" -v "$PWD":/src -w /src "$IMAGE" bash -c '
     mkdir -p /etc/confd /etc/config /etc/scripts
     cp schema/*.tsv web/*.html web/*.css web/*.js /etc/confd/
+    # The build manifest of a Nijika Luna image, for System > About.
+    printf "%s\n" image=nijika-luna-261122-04f252c-dev built=2026-11-22T10:00Z kernel=6.18.55 \
+      exporter=v1.11.1 confd=unknown odi_oss=v1.19.0 odi_oss_rev=e5dbb6b luna_patches=13 \
+      odi_ui=v1.19.0 odi_ui_rev=0040b9d nijika_ui=f69ac59 > /etc/odi-build
     # No credential file on purpose: this is the state a freshly flashed or
     # factory-reset stick is in, and the fallback plus its banner is exactly
     # what wants looking at. Write one here to preview the other state.

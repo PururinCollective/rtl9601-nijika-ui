@@ -36,6 +36,7 @@ import { renderService } from './nj-service.js';
 import { renderTopology } from './nj-topology.js';
 import { renderDevice } from './nj-device.js';
 import { renderIdentity, wireIdentity, resetIdentity } from './nj-identity.js';
+import { renderAbout } from './nj-about.js';
 
 /*
  * The page tree. A view names the odi-ui panel and subs it shows (`subs`),
@@ -67,6 +68,7 @@ const MENU = [
       show: () => { renderFirmware(); renderUpdateSwitch(); } },
     { id: 'advanced', title: 'Advanced', panel: 'p-config', subs: ['c-services'], config: ['services'] },
     { id: 'logs', title: 'Logs', panel: 'p-system', subs: ['s-logs'], show: () => renderTools() },
+    { id: 'about', title: 'About', page: renderAbout },
   ] },
 ];
 const HOME = 'status/device';

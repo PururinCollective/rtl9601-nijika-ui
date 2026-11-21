@@ -508,6 +508,25 @@ table.nj-kv tr + tr td { border-top: var(--nj-hair); }
 table.nj-kv td.left { width: 40%; color: var(--nj-dim); font-weight: 500; }
 table.nj-kv td:not(.left) { font-family: var(--nj-mono); font-size: 13px; }
 
+/* --- System > About ------------------------------------------------------ */
+
+/* The banner: Nijika with the ONU box, the name and the version. The line
+   art takes the text colour, so it follows the theme. */
+.nj-about-hero { display: flex; align-items: center; gap: 24px; padding: 18px 22px; }
+.nj-mascot { flex: 0 0 168px; color: var(--nj-text); }
+.nj-mascot-svg { display: block; width: 100%; height: auto; }
+.nj-about-text { min-width: 0; }
+.nj-about-text h3.nj-about-name { margin: 0 0 6px; padding: 0; border: 0; font-size: 26px; font-weight: 700; }
+.nj-about-text p { margin: 0 0 10px; color: var(--nj-dim); }
+.nj-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.nj-chip {
+  padding: 2px 9px; border: var(--nj-hair); border-radius: 999px; background: var(--nj-panel-2);
+  color: var(--nj-text); font-family: var(--nj-mono); font-size: 12px; overflow-wrap: anywhere;
+}
+.nj-about-list ul { margin: 0; padding-left: 20px; }
+.nj-about-list li { margin: 0 0 8px; line-height: 1.5; }
+.nj-about-list li:last-child { margin-bottom: 0; }
+
 /* --- Status > Device ----------------------------------------------------- */
 
 /* SFP and ONT side by side, the same height: the ONT box gives what is left
@@ -714,6 +733,8 @@ ul.vlans .vid { font-size: 17px; font-weight: 700; font-variant-numeric: tabular
   .nj-navlogout .nj-logout { width: 100%; }
   .linepill .num { display: none; }
   .nj-pagehead h2 { font-size: 21px; }
+  .nj-about-hero { flex-direction: column; align-items: flex-start; gap: 12px; padding: 14px; }
+  .nj-mascot { flex-basis: auto; width: 128px; }
   table.nj-kv td { padding: 8px 14px; }
   .cbi-section > h3 { padding: 12px 14px; }
   .nj-main .block, .nj-main .sub > .settings, .nj-main .me-card, .nj-main .status-grid, .nj-main .overview { padding: 14px; }

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Nijika UI: System > About. The firmware and the source revisions it was built from (Nijika
+  Luna, the Nijika UI commit, the ODI OSS and ODI UI releases and commits, linked on GitHub,
+  and the confd build), the kernel version and the partition running, Nijika holding the ONU
+  box, the credits (Andre Ziviani, the 10G PON members, the Open PON Foundation, Peter-Pon,
+  the contributors), a legal notice and an operation notice. The revisions are key lines of
+  `/etc/odi-build` (`odi_oss`, `odi_oss_rev`, `luna_patches`, `odi_ui`, `odi_ui_rev`,
+  `nijika_ui`), which the Nijika Luna build writes; a dash where an image has none. The preview
+  has such a manifest.
 - Nijika UI on odi-ui v1.19.0: `nijika.html` built again from its `index.html`. odi-ui's new
   OMCI Topology subtab is in the markup and not shown: Status > OMCI Topology draws the same
   MIB. The Nijika questions (Switch & Reboot, deleting an SSH key, Reset Settings to Default)
