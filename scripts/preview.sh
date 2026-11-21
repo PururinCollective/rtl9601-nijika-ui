@@ -21,6 +21,11 @@
 #   PREVIEW_SERDES=hisgmii scripts/preview.sh -> the host port in that link mode (fiber1g, 2500basex,
 #                                             the default, or hisgmii)
 #   PREVIEW_ODI=1 scripts/preview.sh       -> odi-ui at /odi too (on a stick: nv setenv odi_oss_ui 1)
+#   PREVIEW_MIB=dir scripts/preview.sh     -> `omcicli mib get <class>` answers from dir/<class>.txt,
+#                                             a class with no file as an empty table. Read-only capture
+#                                             from a stick (omcid answers this safely):
+#     for c in 262 268 266 281 130 47 45 11 329 134 84 171; do
+#       ssh root@192.168.1.1 "omcicli mib get $c" > dir/$c.txt; done
 #   scripts/shot.mjs                       -> screenshots + console errors
 #   docker rm -f odi-ui-preview            -> stop it
 set -e
@@ -34,8 +39,10 @@ if [ -n "${PREVIEW_OMCI:-}" ]; then
   [ -d "$PREVIEW_OMCI" ] || { echo "PREVIEW_OMCI: no directory $PREVIEW_OMCI" >&2; exit 1; }
   OMCI_MOUNT=(-v "$(cd "$PREVIEW_OMCI" && pwd)":/omci:ro)
 fi
-docker run -d --name odi-ui-preview -p 18080:18080 --cap-add SYSLOG -e PREVIEW_TRIAL -e PREVIEW_DEV -e PREVIEW_OMCI -e PREVIEW_SERDES -e PREVIEW_ODI "${OMCI_MOUNT[@]}" \
-  -v "$PWD":/src -w /src "$IMAGE" bash -c '
+MIB_MOUNT=()
+if [ -n "${PREVIEW_MIB:-}" ]; then MIB_MOUNT=(-v "$(cd "$PREVIEW_MIB" && pwd)":/mib:ro); fi
+docker run -d --name odi-ui-preview -p 18080:18080 --cap-add SYSLOG -e PREVIEW_TRIAL -e PREVIEW_DEV -e PREVIEW_OMCI -e PREVIEW_SERDES -e PREVIEW_ODI \
+  "${OMCI_MOUNT[@]}" "${MIB_MOUNT[@]}" -v "$PWD":/src -w /src "$IMAGE" bash -c '
     mkdir -p /etc/confd /etc/config /etc/scripts
     cp schema/*.tsv web/*.html web/*.css web/*.js /etc/confd/
     # No credential file on purpose: this is the state a freshly flashed or
@@ -103,6 +110,11 @@ DIAG
     # scripts/capture-omci.sh against a real stick settles that.
     cat > /bin/omcicli <<"OMCICLI"
 #!/bin/sh
+# PREVIEW_MIB: a captured MIB, one file per class, answers every mib get.
+if [ -d /mib ] && [ "$1 $2" = "mib get" ]; then
+  if [ -f "/mib/$3.txt" ]; then cat "/mib/$3.txt"; else printf "0 rows\n"; fi
+  exit 0
+fi
 frame() { printf "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n%s\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n" "$1"; }
 # PREVIEW_OMCI: a class the capture has is answered from it, one entity of it
 # when one is asked for (in the omcid layout, each row opens with a
@@ -171,7 +183,7 @@ PING
 case "$1 $2" in
 "getenv sw_active")  echo "sw_active=0" ;;
 "getenv "|"getenv")  printf "sw_active=0\nsw_commit=0\nsw_tryactive=2\nsw_version0=ODI-260910-6861b53\nsw_version1=V1.0-220923\n" ;;
-"fallback "|"fallback") printf "Fallback environment: 1\nsw_active=0\nsw_commit=0\nsw_tryactive=2\n" ;;
+"fallback "|"fallback") printf "Fallback environment: 1\nsw_active=0\nsw_commit=0\nsw_tryactive=2\n\n" ;;
 "getenv odi_oss_ui") [ -f /etc/config/odi_oss_ui ] && echo odi_oss_ui=1 ;;
 "setenv odi_oss_ui") if [ "$3" = 1 ]; then : > /etc/config/odi_oss_ui; else rm -f /etc/config/odi_oss_ui; fi ;;
 "setenv"*)           ;;
