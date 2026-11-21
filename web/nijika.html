@@ -341,6 +341,18 @@
       <div id="services-cards" class="cards"></div>
     </div>
 
+    <div class="sub" id="o-topology" role="tabpanel" aria-labelledby="st-omci-topology" data-sub="topology" hidden>
+      <div class="block-head">
+        <p class="lede">How the entities the OLT created connect, from the fibre to the ports. Read from the MIB on demand. Click a box to follow its path.</p>
+        <button id="topo-reload" type="button">Refresh</button>
+      </div>
+      <p id="topo-msg" class="hint" role="status" aria-live="polite"></p>
+      <p class="topo-scroll hint">Eight columns: scroll the drawing sideways.</p>
+      <div id="topo-graph" class="topo"></div>
+      <p class="topo-legend hint"><span class="topo-key olt"></span> created by the OLT <span class="topo-key onu"></span> created by the ONU <span class="topo-key unused"></span> stored, not on a path from a GEM port to a UNI</p>
+      <div id="topo-facts"></div>
+    </div>
+
     <div class="sub" id="o-phone" role="tabpanel" aria-labelledby="st-omci-phone" data-sub="phone" hidden>
       <div class="block-head">
         <p class="lede">This page shows the VoIP lines provisioned by the OLT. The SFP has no phone port; the router registers the line with these values.</p>
@@ -707,6 +719,17 @@ Does the stock firmware work on the same line:</pre>
   <div id="update-list"></div>
   <div class="switchrow">
     <button id="update-close" class="primary" type="button">Close</button>
+  </div>
+</dialog>
+
+<!-- The question before a change (dom.js ask): modal, headed by the cost
+     badge, with a button that says what it does. -->
+<dialog id="ask-dialog" aria-labelledby="ask-head" aria-describedby="ask-body">
+  <div id="ask-head" class="ask-head"></div>
+  <div id="ask-body" class="ask-body"></div>
+  <div class="ask-acts">
+    <button id="ask-cancel" type="button">Cancel</button>
+    <button id="ask-ok" class="primary" type="button">Continue</button>
   </div>
 </dialog>
 

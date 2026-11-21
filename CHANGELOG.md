@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Nijika UI on odi-ui v1.19.0: `nijika.html` built again from its `index.html`. odi-ui's new
+  OMCI Topology subtab is in the markup and not shown: Status > OMCI Topology draws the same
+  MIB. The Nijika questions (Switch & Reboot, deleting an SSH key, Reset Settings to Default)
+  open in the dialog of the page, as odi-ui's do now, with the button named for what it does.
 - Nijika Luna: System > Advanced switches the neighbour announcements, `LLDP_ENABLE` and
   `MNDP_ENABLE` (odi-only keys of the Luna image, on unless `0`): LLDP and MikroTik MNDP
   frames on the link to the router, so it lists the stick and its address. Class `live`,

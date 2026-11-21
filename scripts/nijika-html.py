@@ -286,7 +286,7 @@ EXACT = [
  '<p class="help">All keys are included in backup and restore.</p>'),
 ('<p class="lede">What the OLT built on this ONU. When it disagrees with Config, the line is right.</p>',
  '<p class="lede">This page shows the services provisioned by the OLT (OMCI). They take priority over the GPON settings.</p>'),
-('>Read again</button>', '>Refresh</button>', 3),
+('>Read again</button>', '>Refresh</button>', 4),
 ('<p class="lede">The phone lines the OLT provisioned. The stick has no phone socket and registers nothing: the router behind it registers the line, with these values.</p>',
  '<p class="lede">This page shows the VoIP lines provisioned by the OLT. The SFP has no phone port; the router registers the line with these values.</p>'),
 ('<p class="me-state">Phone ports are off</p>', '<p class="me-state">Phone Ports: Disabled</p>'),

@@ -529,9 +529,10 @@ async function renderFirmware() {
 async function swapAction(p) {
   const out = $('#fwout');
   out.textContent = '';
-  if (!confirm(`Are you sure to switch to partition ${p} and reboot?\n\n`
+  if (!(await ask(`Are you sure to switch to partition ${p} and reboot?\n\n`
       + `Partition ${p} will be the boot partition, with no trial. `
-      + 'The PON service stops for about two minutes.')) return;
+      + 'The PON service stops for about two minutes.',
+  { action: 'Switch & Reboot', danger: true, badge: costBadge('reboot') }))) return;
   try {
     const r = await fetch('/api/firmware', {
       method: 'POST',

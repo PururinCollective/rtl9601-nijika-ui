@@ -7,7 +7,7 @@
  * Luna own (renderAccess).
  */
 
-import { $, el, get, createHelpToggle } from './dom.js';
+import { $, el, get, ask, createHelpToggle } from './dom.js';
 import { S } from './state.js';
 import { renderAll } from './config.js';
 import { renderTrial } from './firmware.js';
@@ -203,8 +203,8 @@ export async function delSshKey(i, line) {
   out.textContent = '';
   /* The only way into a keys-only stick, and a removal that cannot be undone
      from here: the key has to be pasted again. */
-  if (!confirm('Are you sure you want to delete this key?'
-      + (SSH_LINES.length <= 1 ? '\n\nThis is the last key.' : ''))) return;
+  if (!(await ask('Are you sure you want to delete this key?'
+      + (SSH_LINES.length <= 1 ? '\n\nThis is the last key.' : ''), { action: 'Delete', danger: true }))) return;
   try {
     const r = await fetch('/api/sshkeys', {
       method: 'POST',
@@ -233,10 +233,10 @@ async function resetConfig() {
   const btn = $('#reset-go');
 
   out.textContent = '';
-  if (!confirm('Are you sure to reset the service configuration to default?\n\n'
+  if (!(await ask('Are you sure to reset the service configuration to default?\n\n'
       + 'LOID, DEVICE_TYPE, DUAL_MGMT_MODE and the OMCI_CUSTOM masks are reset. '
       + 'The management IP, VLAN, PLOAM password, serial number and MAC keys are kept.\n\n'
-      + 'A backup is downloaded first.')) return;
+      + 'A backup is downloaded first.', { action: 'Reset', danger: true }))) return;
 
   btn.disabled = true;
   try {
